@@ -18,7 +18,7 @@ Imports
 Assuming you want to work with Agda's propositional equality reasoning, for which
 there is already a strategy available, an illustration code follows:
 
-    ```agda
+    
     open import Data.List
     
     open import RW.Strategy.PropEq
@@ -28,7 +28,7 @@ there is already a strategy available, an illustration code follows:
              → (xs ++ ys) ++ zs ≡ xs ++ (ys ++ zs)
     ++-assoc [] ys zs       = refl
     ++-assoc (x ∷ xs) ys zs = tactic (RW (quote ++-assoc))
-    ```
+    
 
 Implementing Your Strategy
 --------------------------
