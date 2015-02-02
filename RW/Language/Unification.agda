@@ -122,7 +122,7 @@ module RW.Language.Unification where
   --------------------------------------------------
   -- Monadic Boilerplate
 
-  open import Utils.Monads
+  open import RW.Utils.Monads
   open Monad {{...}}
 
   _<$>_ : ∀{a b}{A : Set a}{B : Set b} 

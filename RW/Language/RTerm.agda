@@ -298,7 +298,7 @@ module RW.Language.RTerm where
   -----------------------------------------
   -- Converting Back to Agda
 
-  open import Utils.Monads using (MonadState; ST; get; inc) renaming (module Monad to MonadClass)
+  open import RW.Utils.Monads using (MonadState; ST; get; inc) renaming (module Monad to MonadClass)
   open MonadClass {{...}}
 
   private
