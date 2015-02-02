@@ -3,18 +3,16 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Reflection renaming (Term to AgTerm; Type to AgType)
 open import Data.String using (String)
 
-open import Language.RTerm
-open import Language.RTermUtils
-open import Language.Unification
+open import RW.Language.RTerm
+open import RW.Language.RTermUtils
+open import RW.Language.Unification
 
-open import Rel.Core.Equality
+open import RW.Strategy
 
-open import Strategy
+module RW.RW (db : TStratDB) where
 
-module RW (db : TStratDB) where
-
-  open import Utils.Monads
-  open import Utils.Error
+  open import RW.Utils.Monads
+  open import RW.Utils.Error
   open Monad {{...}}
   open IsError {{...}}
 

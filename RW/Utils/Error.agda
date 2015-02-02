@@ -1,8 +1,8 @@
 open import Prelude
-open import Utils.Monads
+open import RW.Utils.Monads
 
 -- Some Error monad utilities, a là Haskell.
-module Utils.Error where
+module RW.Utils.Error where
 
   open import Data.String
   

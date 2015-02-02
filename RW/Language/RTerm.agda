@@ -6,7 +6,7 @@ open import Data.String
 open import Data.Nat as Nat using (decTotalOrder; _≤_; s≤s; z≤n)
 open import Relation.Binary using (module DecTotalOrder)
 
-module Language.RTerm where
+module RW.Language.RTerm where
   
   open import Reflection renaming (Term to AgTerm; Type to AgType)
     public

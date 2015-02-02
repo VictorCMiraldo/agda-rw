@@ -1,10 +1,11 @@
 open import Prelude
-open import Language.RTerm
 open import Data.Maybe using (Maybe; just; nothing; is-just) renaming (maybe′ to maybe)
 open import Reflection using (_≟-Lit_; _≟-Name_)
-open import Utils.Monads
 
-module Language.RTermUtils where
+open import RW.Language.RTerm
+open import RW.Utils.Monads
+
+module RW.Language.RTermUtils where
 
   open Monad {{...}}
 

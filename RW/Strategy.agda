@@ -2,19 +2,19 @@ open import Prelude
 open import Data.Maybe using (Maybe; just; nothing) renaming (maybe′ to maybe)
 open import Data.String
 
-open import Language.RTerm
-open import Language.RTermUtils
-open import Language.Unification
+open import RW.Language.RTerm
+open import RW.Language.RTermUtils
+open import RW.Language.Unification
 
 -- Strategy Module.
 --
 --  Here we'll provide a modular approach to implementing both 
 --  unification and  abstraction-guessing strategies based
 --  on the head of both terms.
-module Strategy where
+module RW.Strategy where
   
-  open import Utils.Monads using (module Monad)
-  open import Utils.Error
+  open import RW.Utils.Monads using (module Monad)
+  open import RW.Utils.Error
   open Monad {{...}}
   open IsError {{...}}
 

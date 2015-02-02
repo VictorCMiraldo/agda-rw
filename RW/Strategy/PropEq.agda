@@ -1,13 +1,13 @@
 open import Prelude
 open import Data.Maybe using (Maybe; just; nothing)
 
-open import Language.RTerm
-open import Language.RTermUtils using (hole2Abs)
-open import Language.Unification using (RSubst)
-open import Utils.Error
-open import Strategy
+open import RW.Language.RTerm
+open import RW.Language.RTermUtils using (hole2Abs)
+open import RW.Language.Unification using (RSubst)
+open import RW.Utils.Error
+open import RW.Strategy
 
-module Strategy.PropEq where
+module RW.Strategy.PropEq where
 
   pattern pat-≡  = (rdef (quote _≡_))
 
