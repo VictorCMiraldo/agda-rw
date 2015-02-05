@@ -277,8 +277,16 @@ module RW.Language.RTerm where
       convert' d (pi _ (abs _ (el _ t₂))) = convert' (suc d) t₂
       convert' d (lam _ (abs _ l)) 
         = rlam (convert' (suc d) l)
-      convert' d _
-        = unsuportedSyntax "..."
+      convert' _ (pat-lam _ _)
+        = unsuportedSyntax "Pattern-Matching lambdas."
+      convert' _ (sort _)
+        = unsuportedSyntax "Sorts."
+      convert' _ unknown
+        = unsuportedSyntax "Unknown."
+      convert' _ (var _ (_ ∷ _))
+        = unsuportedSyntax "Variables with arguments."
+      convert' _ (lit _)
+        = unsuportedSyntax "Non-ℕ literals."
 
       convertChildren : ℕ → List (Arg AgTerm) → List (RTerm ℕ)
       convertChildren d [] = []

@@ -36,7 +36,7 @@ module RW.Language.RTermUtils where
   _∩_ (rlit x) (rlit y) with x ≟-Lit y
   ...| no  _ = ovar nothing
   ...| yes _ = rlit x
-  _∩_ (rlam x) (rlam y) = x ∩ y
+  _∩_ (rlam x) (rlam y) = rlam (x ∩ y)
   _∩_ _ _ = ovar nothing
 
   -- Lifting holes.
@@ -45,6 +45,7 @@ module RW.Language.RTermUtils where
   --  into a single hole.
   {-# TERMINATING #-}
   _↑ : ∀{a}{A : Set a} → RTerm (Maybe A) → RTerm (Maybe A)
+  _↑ (rapp x []) = rapp x []
   _↑ (rapp x ax) with all isHole ax
   ...| true   = ovar nothing
   ...| false  = rapp x (map _↑ ax)
@@ -66,22 +67,26 @@ module RW.Language.RTermUtils where
   hole2Abs : RTerm (Maybe ℕ) → RTerm ℕ
   hole2Abs = rlam ∘ holeElim zero suc
 
+  open import Data.String hiding (_++_)
+  postulate
+    err : ∀{a}{A : Set a} → String → A
+
   -- Term Subtraction
   {-# TERMINATING #-}
   _-_ : ∀{A} ⦃ eqA : Eq A ⦄ → RTerm (Maybe A) → RTerm A → Maybe (List (RTerm A))
   hole - t = return (t ∷ [])
   (rapp x ax) - (rapp y ay) with x ≟-RTermName y
-  ...| no  _ = nothing
+  ...| no  _ = err "1" -- nothing
   ...| yes _ = joinInner (map (uncurry _-_) (zip ax ay))
      where
        joinInner : ∀{A} → List (Maybe (List A)) → Maybe (List A)
        joinInner [] = return []
-       joinInner (nothing ∷ _) = nothing
+       joinInner (nothing ∷ _) = err "2" -- nothing
        joinInner (just x ∷ xs) = joinInner xs >>= return ∘ _++_ x
   (rlam x) - (rlam y) = x - y
   x - y with x ≟-RTerm (replace-A (ovar ∘ just) y)
   ...| yes _ = just []
-  ...| no  _ = nothing
+  ...| no  _ = err "3" -- nothing
 
   -- Term Subtraction, single result.
   _-↓_ : ∀{A} ⦃ eqA : Eq A ⦄ → RTerm (Maybe A) → RTerm A → Maybe (RTerm A)
@@ -91,7 +96,17 @@ module RW.Language.RTermUtils where
   ...| nothing      = nothing
 
   -- Structural Manipulation
+
+  -- Lift ivar's to ovar's
+  {-# TERMINATING #-}
+  liftIVars : ∀{a}{A : Set a} → (A → ℕ) → RTerm A → RTerm ℕ
+  liftIVars f (ovar x) = ovar (f x)
+  liftIVars f (ivar n) = ovar n
+  liftIVars f (rlit l) = rlit l
+  liftIVars f (rlam t) = rlam (liftIVars f t)
+  liftIVars f (rapp n ts) = rapp n (map (liftIVars f) ts)
   
+  -- Models a binary application
   RBinApp : ∀{a} → Set a → Set _
   RBinApp A = RTermName × RTerm A × RTerm A
 
@@ -109,4 +124,8 @@ module RW.Language.RTermUtils where
       aux : ∀{a}{A : Set a} → RTerm A → Maybe (RTerm A)
       aux (rapp impl (t1 ∷ t2 ∷ [])) = aux t2
       aux t                          = just t
-  typeResult _ = nothing
+  -- TODO:
+  --    For lemma's with no arguments,
+  --    how should we open their types?
+  typeResult t = just t
+  -- typeResult _ = nothing
