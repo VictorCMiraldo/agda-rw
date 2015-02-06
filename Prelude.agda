@@ -21,7 +21,7 @@ module Prelude where
     public
 
   open import Data.Nat 
-    using (ℕ; suc; zero; _+_; _*_)
+    using (ℕ; suc; zero; _+_; _*_; _∸_)
     renaming (_≟_ to _≟-ℕ_) 
     public
                                           
