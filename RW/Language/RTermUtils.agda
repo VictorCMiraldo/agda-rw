@@ -1,4 +1,5 @@
 open import Prelude
+open import Data.Nat using (_≤?_)
 open import Data.Maybe using (Maybe; just; nothing; is-just) renaming (maybe′ to maybe)
 open import Reflection using (_≟-Lit_; _≟-Name_)
 
@@ -99,12 +100,17 @@ module RW.Language.RTermUtils where
 
   -- Lift ivar's to ovar's
   {-# TERMINATING #-}
-  liftIVars : ∀{a}{A : Set a} → (A → ℕ) → RTerm A → RTerm ℕ
-  liftIVars f (ovar x) = ovar (f x)
-  liftIVars f (ivar n) = ovar n
-  liftIVars f (rlit l) = rlit l
-  liftIVars f (rlam t) = rlam (liftIVars f t)
-  liftIVars f (rapp n ts) = rapp n (map (liftIVars f) ts)
+  lift-ivar' : ∀{a}{A : Set a} → ℕ → (A → ℕ) → RTerm A → RTerm ℕ
+  lift-ivar' d f (ovar x) = ovar (f x)
+  lift-ivar' d f (ivar n) with n ≤? d
+  ...| yes n≤d = ivar n
+  ...| no  n>d = ovar n
+  lift-ivar' d f (rlit l) = rlit l
+  lift-ivar' d f (rlam t) = rlam (lift-ivar' (suc d) f t)
+  lift-ivar' d f (rapp n ts) = rapp n (map (lift-ivar' d f) ts)
+
+  lift-ivar : ∀{a}{A : Set a} → (A → ℕ) → RTerm A → RTerm ℕ
+  lift-ivar = lift-ivar' 0
   
   -- Models a binary application
   RBinApp : ∀{a} → Set a → Set _
