@@ -140,7 +140,7 @@ module RW.Strategy where
   -- Runs the unification strategies we know about
   -- in the given target terms.
   runUStrats : RWData → Err StratErr UData
-  runUStrats = lift-ty <|> basic <|> basic-sym 
+  runUStrats = basic <|> basic-sym 
   
   -------------------------
   -- Term Strategy Layer

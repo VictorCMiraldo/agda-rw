@@ -61,12 +61,24 @@ module RW.Language.RTermUtils where
   -- Converting Holes to Abstractions
   --
   --  Will replace holes for "var 0", and increment every other variable.
-  holeElim : ∀{a}{A : Set a} → A → (A → A) → RTerm (Maybe A) → RTerm A
-  holeElim hZ hF = replace-A (maybe (ovar ∘ hF) (ovar hZ))
+  {-# TERMINATING #-}
+  holeElim : ℕ → RTerm (Maybe ℕ) → RTerm ℕ
+  holeElim d (ovar (just x)) with suc x ≤? d
+  ...| yes _ = ovar x
+  ...| no  _ = ovar (suc x)
+  holeElim d (ovar nothing) = ivar zero
+  holeElim d (ivar n) with suc n ≤? d
+  ...| yes _ = ivar n
+  ...| no  _ = ivar (suc n)
+  holeElim d (rlit l) = rlit l
+  holeElim d (rlam rt) = rlam (holeElim (suc d) rt)
+  holeElim d (rapp n ts) = rapp n (map (holeElim d) ts)
+
+  -- holeElim hZ hF = replace-ivar (ivar ∘ suc) ∘ replace-A (maybe (ovar) (ovar hZ))
 
   -- Specialized version for handling indexes.
   hole2Abs : RTerm (Maybe ℕ) → RTerm ℕ
-  hole2Abs = rlam ∘ holeElim zero suc
+  hole2Abs = rlam ∘ holeElim 0
 
   open import Data.String hiding (_++_)
   postulate

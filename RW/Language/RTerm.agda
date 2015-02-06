@@ -264,9 +264,15 @@ module RW.Language.RTerm where
 
     mutual
       convert' : ℕ → AgTerm → RTerm ℕ
+      {-
       convert' d (var x []) with total d x
       ...| i1 d≤x = ovar (Δ d≤x)
       ...| i2 d>x = ivar x
+      -}
+      convert' d (var x []) with total d x
+      ...| i1 d≤x = ivar (x ∸ d)
+      ...| i2 d>x = ivar x
+      -- convert' d (var x []) = ivar x
       convert' d (lit (nat n)) = convertℕ n
       convert' d (con c args)
         = rapp (rcon c) (convertChildren d args)

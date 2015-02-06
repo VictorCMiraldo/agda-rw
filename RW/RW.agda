@@ -28,7 +28,7 @@ module RW.RW (db : TStratDB) where
 
   make-RWData : Name → AgTerm → List (Arg AgType) → Err StratErr RWData
   make-RWData act goal ctx with Ag2RTerm goal | Ag2RType (type act) | map (Ag2RType ∘ unarg) ctx
-  ...| g' | ty | ctx' with forceBinary g' | (typeResult ty) >>= forceBinary
+  ...| g' | ty | ctx' with forceBinary g' | (typeResult ty) >>= forceBinary ∘ lift-ivar id
   ...| just g | just a = return (rw-data g a ctx')
   ...| just _ | nothing = throwError (Custom "Something strange happened with ((typeResult ty) >>= forceBinary)")
   ...| nothing | just _ = throwError (Custom "Something strange happened with (forceBinary g)")
