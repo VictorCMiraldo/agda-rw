@@ -36,7 +36,7 @@ module Prelude where
 
   open import Data.List 
     using (List; _∷_; []; map; _++_; zip; filter;
-           all; any; concat)
+           all; any; concat; foldr)
     public
 
   open import Data.Product

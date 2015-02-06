@@ -1,6 +1,5 @@
 open import Prelude
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (foldr)
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils using (hole2Abs)

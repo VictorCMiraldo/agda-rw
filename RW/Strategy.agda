@@ -128,6 +128,9 @@ module RW.Strategy where
     in maybe (λ s → i2 (u-data g□ s (Symmetry ∷ []))) (i1 NoUnification) σ
 
   -- Tries to unify with a lifting of the action types.
+  -- Whenever the context is empty (which implies we'll have
+  -- no `ovar` in our goal), we need to change the action type
+  -- variables to something that opens up unification.
   lift-ty : RWData → Err StratErr UData
   lift-ty (rw-data _ _ (_ ∷ _)) = i1 Nothing
   lift-ty (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) [])

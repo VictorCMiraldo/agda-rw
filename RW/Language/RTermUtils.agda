@@ -102,9 +102,9 @@ module RW.Language.RTermUtils where
   {-# TERMINATING #-}
   lift-ivar' : ∀{a}{A : Set a} → ℕ → (A → ℕ) → RTerm A → RTerm ℕ
   lift-ivar' d f (ovar x) = ovar (f x)
-  lift-ivar' d f (ivar n) with n ≤? d
-  ...| yes n≤d = ivar n
-  ...| no  n>d = ovar n
+  lift-ivar' d f (ivar n) with d ≤? n
+  ...| yes d≤n = ovar n
+  ...| no  n>d = ivar n
   lift-ivar' d f (rlit l) = rlit l
   lift-ivar' d f (rlam t) = rlam (lift-ivar' (suc d) f t)
   lift-ivar' d f (rapp n ts) = rapp n (map (lift-ivar' d f) ts)
