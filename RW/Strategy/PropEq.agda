@@ -1,5 +1,6 @@
 open import Prelude
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (foldr)
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils using (hole2Abs)
@@ -12,16 +13,22 @@ module RW.Strategy.PropEq where
   pattern pat-≡  = (rdef (quote _≡_))
 
   private
+    open UData
+
     ≡-when : RTermName → RTermName → Bool
     ≡-when pat-≡ pat-≡ = true
     ≡-when _     _     = false
 
-    ≡-how : Name → RTerm (Maybe ℕ) → RSubst → Err StratErr (RTerm ℕ)
-    ≡-how act g□ σ = i2 (rapp (rdef (quote cong))
-                              ( hole2Abs g□
-                              ∷ makeApp act σ
-                              ∷ [])
-                        )
+    fixTrs : Trs → RTerm ℕ → RTerm ℕ
+    fixTrs Symmetry term = rapp (rdef (quote sym)) (term ∷ [])
+
+    ≡-how : Name → UData → Err StratErr (RTerm ℕ)
+    ≡-how act (u-data g□ σ trs)
+      = i2 (rapp (rdef (quote cong))
+                 ( hole2Abs g□
+                 ∷ foldr fixTrs (makeApp act σ) trs
+                 ∷ [])
+           )
 
   ≡-strat : TStrat
   ≡-strat = record

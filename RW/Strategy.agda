@@ -42,75 +42,102 @@ module RW.Strategy where
         showErr (Custom msg)  = "[!] " Data.String.++ msg
 
   -------------------------
+  -- Strategy Pipeline
+  --
+  --  Whenever we want to perform a rewrite, we'll have a goal and an action to perform on a "subgoal"
+  --  This subgoal has to figured out by us, which we denote by g□.
+  --  Afterwards, we need to somehow apply our action.
+
+  -- Let's encapsulate everything we need in a record
+  record RWData : Set where
+    constructor rw-data
+    field 
+      goal   : RBinApp ℕ
+      act    : RBinApp ℕ
+      ctx    : List (RTerm ℕ)
+    
+    goal-name : RTermName
+    goal-name = p1 goal
+
+    goal-1 : RTerm ℕ
+    goal-1 = p1 (p2 goal)
+    goal-2 : RTerm ℕ
+    goal-2 = p2 (p2 goal)
+
+    act-name : RTermName
+    act-name = p1 act
+
+    act-1 : RTerm ℕ
+    act-1 = p1 (p2 act)
+    act-2 : RTerm ℕ
+    act-2 = p2 (p2 act)
+
+  open RWData
+
+  -- We might need a few transformations here and there.
+  data Trs : Set where
+    Symmetry : Trs
+
+  -- Unification data
+  record UData : Set where
+    constructor u-data
+    field
+      -- We should have an abstraction available,
+      □ : RTerm (Maybe ℕ)
+
+      -- A substitution
+      σ : RSubst
+      
+      -- Our action and a few transformations that might need to be applied.
+      trs : List Trs
+
+  -------------------------
   -- Unification Strategy Layer
   -------------------------
 
-  -- A Unification strategy is meant to obtain
-  -- a suitable substitution for applying the given
-  -- action to the goal in question.
-  --
-  -- Simply unifying the goal type with the action result type
-  -- does not work. They usually have non-unifiable types.
-  -- They do, however, have unifiable sub-terms, which
-  -- must be 'extracted' following a given strategy.
-  --
-  -- It is worth mentioning that these will be hardcoded
-  -- and modifying the unification strategy pipeline will
-  -- require recompiling the code.
-  record UStrat : Set where
-    field
-      -- Predicate for when we should apply this strategy.
-      -- First is the goal top-most name; followed by
-      -- the actions top-most name.
-      when : RTermName → RTermName → Bool
+  private
+    μ : ∀{a}{A : Set a} → Maybe (Maybe A) → Maybe A
+    μ (just x) = x
+    μ nothing  = nothing
 
-      -- Extract an abstraction and a substitution
-      -- to be passed on to subsequent term-guessing
-      -- strategy.
-      howᵤ : RBinApp ℕ -- Again, Goal term opened as a binary application.
-           → RBinApp ℕ -- Action term. 
-           → Err StratErr (RTerm (Maybe ℕ) × RSubst)
-  
-  -- Basic strategy
-  basicUStrat : UStrat
-  basicUStrat = record
-    { when = λ _ _ → true
-    ; howᵤ = basic
-    } where
-      μ : ∀{a}{A : Set a} → Maybe (Maybe A) → Maybe A
-      μ (just x) = x
-      μ nothing  = nothing
+  -- Alternatives
+  infixr 4 _<|>_
+  _<|>_ : ∀{a b}{A : Set a}{B E : Set b} ⦃ isErr : IsError E ⦄ 
+        → (A → Err E B) → (A → Err E B)
+        → A → Err E B
+  (f <|> g) a with f a
+  ...| i1 _ = g a
+  ...| i2b  = i2b
 
-      basic : RBinApp ℕ → RBinApp ℕ
-            → Err StratErr (RTerm (Maybe ℕ) × RSubst)
-      basic (hdₓ , g1 , g2) (hdₐ , ty1 , ty2)
-        = let g□ = g1 ∩↑ g2
-              u1 = (g□ -↓ g1) >>= (unify ty1)
-              u2 = (g□ -↓ g2) >>= (unify ty2)
-              σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
-        in maybe (λ s → i2 (g□ , s)) (i1 NoUnification) σ
+  -- Basic unification
+  basic : RWData → Err StratErr UData
+  basic (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) _ )
+    = let g□ = g1 ∩↑ g2
+          u1 = (g□ -↓ g1) >>= (unify ty1)
+          u2 = (g□ -↓ g2) >>= (unify ty2)
+          σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
+    in maybe (λ s → i2 (u-data g□ s [])) (i1 NoUnification) σ
 
+  -- Unification over the symmetric action type.
+  basic-sym : RWData → Err StratErr UData
+  basic-sym (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) _ )
+    = let g□ = g1 ∩↑ g2
+          u1 = (g□ -↓ g1) >>= (unify ty2)
+          u2 = (g□ -↓ g2) >>= (unify ty1)
+          σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
+    in maybe (λ s → i2 (u-data g□ s (Symmetry ∷ []))) (i1 NoUnification) σ
+
+  -- Tries to unify with a lifting of the action types.
+  lift-ty : RWData → Err StratErr UData
+  lift-ty (rw-data _ _ (_ ∷ _)) = i1 Nothing
+  lift-ty (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) [])
+    = let new-data = rw-data (hdₓ , g1 , g2) (hdₐ , lift-ivar id ty1 , lift-ivar id ty2) []
+      in (basic <|> basic-sym) new-data
+      
   -- Runs the unification strategies we know about
   -- in the given target terms.
-  runUStrats : RBinApp ℕ → RBinApp ℕ
-             → Err StratErr (RTerm (Maybe ℕ) × RSubst)
-  runUStrats
-    = chose ustratDB
-    where
-      ustratDB : List UStrat
-      ustratDB = basicUStrat ∷ []
-
-      chose : List UStrat → RBinApp ℕ → RBinApp ℕ
-            → Err StratErr (RTerm (Maybe ℕ) × RSubst)
-      chose [] _ _ = i1 NoUStrat
-      chose (u ∷ us) g a with UStrat.when u (p1 g) (p1 a)
-      ...| false = chose us g a
-      ...| true  
-         = catchError (UStrat.howᵤ u g a)
-                      (λ { Nothing → chose us g a
-                         ; e       → i1 e
-                         })
-      
+  runUStrats : RWData → Err StratErr UData
+  runUStrats = lift-ty <|> basic <|> basic-sym 
   
   -------------------------
   -- Term Strategy Layer
@@ -125,7 +152,7 @@ module RW.Strategy where
     field
       when : RTermName → RTermName → Bool
 
-      how  : Name → RTerm (Maybe ℕ) → RSubst → Err StratErr (RTerm ℕ)
+      how  : Name → UData → Err StratErr (RTerm ℕ)
 
   -- For now, we'll use a naive list to implement a TStrat
   -- database.
@@ -133,11 +160,10 @@ module RW.Strategy where
   TStratDB = List TStrat
 
   -- Utility to run a list of TStrat's.
-  runTStrats : TStratDB → RTermName → RTermName
-             → Name → RTerm (Maybe ℕ) → RSubst → Err StratErr (RTerm ℕ)
-  runTStrats [] _ _  = λ _ _ _ → i1 NoTStrat
-  runTStrats (s ∷ ss) g a with TStrat.when s g a
-  ...| false = runTStrats ss g a
+  runTStrats : TStratDB → RWData → Name → UData → Err StratErr (RTerm ℕ)
+  runTStrats [] _ = λ _ _ → i1 NoTStrat
+  runTStrats (s ∷ ss) rw with TStrat.when s (goal-name rw) (act-name rw)
+  ...| false = runTStrats ss rw
   ...| true  = TStrat.how s 
 
   -- From a name and a substitution create an application.
