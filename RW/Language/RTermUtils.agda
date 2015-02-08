@@ -58,15 +58,16 @@ module RW.Language.RTermUtils where
        → RTerm A → RTerm A → RTerm (Maybe A)
   v ∩↑ u = (v ∩ u) ↑
 
+  -- Casting
+  ⊥2UnitCast : RTerm (Maybe ⊥) → RTerm Unit
+  ⊥2UnitCast = replace-A (maybe ⊥-elim (ovar unit))
+
   -- Converting Holes to Abstractions
   --
   --  Will replace holes for "var 0", and increment every other variable.
   {-# TERMINATING #-}
-  holeElim : ℕ → RTerm (Maybe ℕ) → RTerm ℕ
-  holeElim d (ovar (just x)) with suc x ≤? d
-  ...| yes _ = ovar x
-  ...| no  _ = ovar (suc x)
-  holeElim d (ovar nothing) = ivar zero
+  holeElim : ℕ → RTerm Unit → RTerm ⊥
+  holeElim d (ovar unit) = ivar zero
   holeElim d (ivar n) with suc n ≤? d
   ...| yes _ = ivar n
   ...| no  _ = ivar (suc n)
@@ -74,11 +75,12 @@ module RW.Language.RTermUtils where
   holeElim d (rlam rt) = rlam (holeElim (suc d) rt)
   holeElim d (rapp n ts) = rapp n (map (holeElim d) ts)
 
-  -- holeElim hZ hF = replace-ivar (ivar ∘ suc) ∘ replace-A (maybe (ovar) (ovar hZ))
-
   -- Specialized version for handling indexes.
-  hole2Abs : RTerm (Maybe ℕ) → RTerm ℕ
+  hole2Abs : RTerm Unit → RTerm ⊥
   hole2Abs = rlam ∘ holeElim 0
+
+  hole2Absℕ : RTerm Unit → RTerm ℕ
+  hole2Absℕ = replace-A ⊥-elim ∘ hole2Abs
 
   open import Data.String hiding (_++_)
   postulate
@@ -112,6 +114,7 @@ module RW.Language.RTermUtils where
 
   -- Lift ivar's to ovar's
   {-# TERMINATING #-}
+  {-
   lift-ivar' : ∀{a}{A : Set a} → ℕ → (A → ℕ) → RTerm A → RTerm ℕ
   lift-ivar' d f (ovar x) = ovar (f x)
   lift-ivar' d f (ivar n) with d ≤? n
@@ -120,9 +123,14 @@ module RW.Language.RTermUtils where
   lift-ivar' d f (rlit l) = rlit l
   lift-ivar' d f (rlam t) = rlam (lift-ivar' (suc d) f t)
   lift-ivar' d f (rapp n ts) = rapp n (map (lift-ivar' d f) ts)
+  -}
 
-  lift-ivar : ∀{a}{A : Set a} → (A → ℕ) → RTerm A → RTerm ℕ
-  lift-ivar = lift-ivar' 0
+  lift-ivar : RTerm ⊥ → RTerm ℕ
+  lift-ivar (ovar ())
+  lift-ivar (ivar n) = ovar n
+  lift-ivar (rlit l) = rlit l
+  lift-ivar (rlam t) = rlam (lift-ivar t)
+  lift-ivar (rapp n ts) = rapp n (map lift-ivar ts) 
   
   -- Models a binary application
   RBinApp : ∀{a} → Set a → Set _

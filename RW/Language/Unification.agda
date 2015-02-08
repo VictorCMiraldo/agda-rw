@@ -119,6 +119,23 @@ module RW.Language.Unification where
   Fin2RTerm : ∀{n} → FinTerm n → RTerm ℕ
   Fin2RTerm = replace-A (ovar ∘ toℕ)
 
+  -- Casting of (RTerm ⊥) to FinTerm
+  mutual
+    ⊥2FinTerm : RTerm ⊥ → ∃ FinTerm
+    ⊥2FinTerm (ovar ())
+    ⊥2FinTerm (ivar n) = 0 , ivar n
+    ⊥2FinTerm (rlit l) = 0 , rlit l
+    ⊥2FinTerm (rlam t) with ⊥2FinTerm t
+    ...| (n , t') = n , rlam t'
+    ⊥2FinTerm (rapp n ts) with ⊥2FinTerm* ts
+    ...| (k , ts') = k , rapp n ts'
+    
+    ⊥2FinTerm* : List (RTerm ⊥) → ∃ (List ∘ FinTerm)
+    ⊥2FinTerm* [] = 0 , []
+    ⊥2FinTerm* (x ∷ xs) with ⊥2FinTerm x | ⊥2FinTerm* xs
+    ...| kx , x' | kxs , xs' with match x' xs'
+    ...| rx , rxs = kx ∧ kxs , rx ∷ rxs
+
   --------------------------------------------------
   -- Monadic Boilerplate
 
@@ -166,12 +183,22 @@ module RW.Language.Unification where
       checkChildren x (t ∷ ts) 
         = check x t >>= λ t' → checkChildren x ts >>= return ∘ (_∷_ t')
 
+  i : Fin 4
+  i = fsuc $ fsuc $ fzero
+
+  j : Fin 4
+  j = fsuc $ fsuc $ fsuc $ fzero
+
+  k : Fin 4
+  k = fzero
+
   
   -- datatype for substitutions (AList in McBride, 2003)
-  data Subst : ℕ → ℕ → Set where
-    nil  : ∀ {n}   → Subst n n
-    snoc : ∀ {m n} → (s : Subst m n) → (t : FinTerm m) → (x : Fin (suc m)) → Subst (suc m) n
+  data Subst : ℕ → Set where
+    nil  : Subst zero
+    snoc : ∀{n} → (s : Subst n) → (t : RTerm ⊥) → (x : Fin (suc n)) → Subst (suc n)
 
+  {-
   -- substitutes t for x (**for** in McBride, 2003)
   _for_ : ∀ {n} (t : FinTerm n) (x : Fin (suc n)) → Fin (suc n) → FinTerm n
   _for_ t x y with thick x y
@@ -242,16 +269,28 @@ module RW.Language.Unification where
   unifyFin : ∀ {m} → (t₁ t₂ : FinTerm m) → Maybe (∃ (Subst m))
   unifyFin {m} t₁ t₂ = unifyAcc t₁ t₂ (m , nil)
 
+  -}
   --------------------------------------------------------
   -- Interface to RTerm ℕ
   
+  -- TODO: Make RSubst into List (ℕ × RTerm ⊥)
   RSubst : Set
   RSubst = List (ℕ × RTerm ℕ)
 
+  projSubst' : ∀{n} → Subst n → List (ℕ × RTerm ⊥)
+  projSubst' nil = []
+  projSubst' (snoc s t x) = (toℕ x , t) ∷ projSubst' s
+
+  {-
   private
     projSubst : ∀{n m} → Subst n m → RSubst
     projSubst nil = []
     projSubst (snoc s t x) = (toℕ x , Fin2RTerm t) ∷ projSubst s
+      where
+        -- TODO: plug this guy in
+        Fin2RTerm⊥ : FinTerm zero → RTerm ⊥
+        Fin2RTerm⊥ = replace-A (λ ())
+  -}
 
   sortSubst : RSubst → RSubst
   sortSubst [] = []
@@ -278,7 +317,13 @@ module RW.Language.Unification where
   ...| nothing = nothing
   ...| just l  = (_++-List_ l) <$> (rs ++ᵣ s)
 
-  unify : (t₁ t₂ : RTerm ℕ) → Maybe RSubst
-  unify t₁ t₂ with R2FinTerm t₁ | R2FinTerm t₂
+  {-
+  -- Unilateral unification.
+  --
+  --  Since t₂ is of type (RTerm ⊥), we are pretty sure it does not
+  --  have any 'ovar' inside, therefore is t₁ that drives unification.
+  unify : (t₁ : RTerm ℕ)(t₂ : RTerm ⊥) → Maybe RSubst
+  unify t₁ t₂ with R2FinTerm t₁ | ⊥2FinTerm t₂
   ...| (_ , f₁) | (_ , f₂) with match f₁ f₂
   ...| r₁ , r₂ = (sortSubst ∘ projSubst ∘ p2) <$> unifyFin r₁ r₂
+  -}

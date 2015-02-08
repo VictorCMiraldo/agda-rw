@@ -52,16 +52,16 @@ module RW.Strategy where
   record RWData : Set where
     constructor rw-data
     field 
-      goal   : RBinApp ℕ
+      goal   : RBinApp ⊥
       act    : RBinApp ℕ
-      ctx    : List (RTerm ℕ)
+      ctx    : List (RTerm ⊥)
     
     goal-name : RTermName
     goal-name = p1 goal
 
-    goal-1 : RTerm ℕ
+    goal-1 : RTerm ⊥
     goal-1 = p1 (p2 goal)
-    goal-2 : RTerm ℕ
+    goal-2 : RTerm ⊥
     goal-2 = p2 (p2 goal)
 
     act-name : RTermName
@@ -83,7 +83,7 @@ module RW.Strategy where
     constructor u-data
     field
       -- We should have an abstraction available,
-      □ : RTerm (Maybe ℕ)
+      □ : RTerm Unit
 
       -- A substitution
       σ : RSubst
@@ -116,7 +116,7 @@ module RW.Strategy where
           u1 = (g□ -↓ g1) >>= (unify ty1)
           u2 = (g□ -↓ g2) >>= (unify ty2)
           σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
-    in maybe (λ s → i2 (u-data g□ s [])) (i1 NoUnification) σ
+    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s [])) (i1 NoUnification) σ
 
   -- Unification over the symmetric action type.
   basic-sym : RWData → Err StratErr UData
@@ -125,17 +125,19 @@ module RW.Strategy where
           u1 = (g□ -↓ g1) >>= (unify ty2)
           u2 = (g□ -↓ g2) >>= (unify ty1)
           σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
-    in maybe (λ s → i2 (u-data g□ s (Symmetry ∷ []))) (i1 NoUnification) σ
+    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s (Symmetry ∷ []))) (i1 NoUnification) σ
 
   -- Tries to unify with a lifting of the action types.
   -- Whenever the context is empty (which implies we'll have
   -- no `ovar` in our goal), we need to change the action type
   -- variables to something that opens up unification.
+  {-
   lift-ty : RWData → Err StratErr UData
   lift-ty (rw-data _ _ (_ ∷ _)) = i1 Nothing
   lift-ty (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) [])
     = let new-data = rw-data (hdₓ , g1 , g2) (hdₐ , lift-ivar id ty1 , lift-ivar id ty2) []
       in (basic <|> basic-sym) new-data
+  -}
       
   -- Runs the unification strategies we know about
   -- in the given target terms.

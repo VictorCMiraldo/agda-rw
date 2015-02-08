@@ -47,6 +47,9 @@ module RW.Language.RTerm where
         ...| yes x≡y = yes (cong just x≡y)
         ...| no  x≢y = no (x≢y ∘ just-inj)
 
+    eq-⊥ : Eq ⊥
+    eq-⊥ = eq (λ x → ⊥-elim x)
+
   -- We'll consider constructor and definitions
   -- as just names; we just need to know how to 
   -- translate them back into a correct AgTerm.
@@ -258,21 +261,15 @@ module RW.Language.RTerm where
   (suc n) -Δ- s≤s prf = n -Δ- prf
 
   private
-    convertℕ : ℕ → RTerm ℕ
+    convertℕ : ∀{a}{A : Set a} → ℕ → RTerm A
     convertℕ zero    = rapp (rcon (quote zero)) []
     convertℕ (suc n) = rapp (rcon (quote suc)) (convertℕ n ∷ [])
 
     mutual
-      convert' : ℕ → AgTerm → RTerm ℕ
-      {-
-      convert' d (var x []) with total d x
-      ...| i1 d≤x = ovar (Δ d≤x)
-      ...| i2 d>x = ivar x
-      -}
+      convert' : ℕ → AgTerm → RTerm ⊥
       convert' d (var x []) with total d x
       ...| i1 d≤x = ivar (x ∸ d)
       ...| i2 d>x = ivar x
-      -- convert' d (var x []) = ivar x
       convert' d (lit (nat n)) = convertℕ n
       convert' d (con c args)
         = rapp (rcon c) (convertChildren d args)
@@ -294,19 +291,19 @@ module RW.Language.RTerm where
       convert' _ (lit _)
         = unsuportedSyntax "Non-ℕ literals."
 
-      convertChildren : ℕ → List (Arg AgTerm) → List (RTerm ℕ)
+      convertChildren : ℕ → List (Arg AgTerm) → List (RTerm ⊥)
       convertChildren d [] = []
       convertChildren d (arg (arg-info visible _) x ∷ xs)
         = convert' d x ∷ convertChildren d xs
       convertChildren d (_ ∷ xs) = convertChildren d xs
 
-  Ag2RTerm : AgTerm → RTerm ℕ
+  Ag2RTerm : AgTerm → RTerm ⊥
   Ag2RTerm a = convert' 0 a
 
   ------------------------------------------
   -- Handling Types
 
-  Ag2RType : AgType → RTerm ℕ
+  Ag2RType : AgType → RTerm ⊥
   Ag2RType (el _ t) = Ag2RTerm t
 
   -----------------------------------------
@@ -341,5 +338,8 @@ module RW.Language.RTerm where
       trevnocChildren (x ∷ xs) with trevnoc' x | trevnocChildren xs
       ...| (r , x') | (rs , xs') = r + rs , arg (arg-info visible relevant) x' ∷ xs'
 
+  -- TODO: TOTHINK:
+  --   How about allowing only (RTerm ⊥) to be translated to and from
+  --   agda?
   R2AgTerm : RTerm ℕ → AgTerm
   R2AgTerm = p2 ∘ trevnoc'

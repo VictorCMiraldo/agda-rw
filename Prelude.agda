@@ -16,6 +16,10 @@ module Prelude where
     using (Unit; unit)
     public
 
+  open import Data.Empty
+    using (⊥; ⊥-elim)
+    public
+
   open import Function 
     using (_∘_; _$_; flip; id; const; _on_) 
     public
