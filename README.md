@@ -40,7 +40,7 @@ And below you'll find the same proof without using the `by` tactic.
         twiceR ∙ evenR ⊆ (ρ twiceR) ∙ twiceR
       ⇐⟨ subst (λ x → twiceR ∙ evenR ⊆ x) (≡r-promote (ρ-intro twiceR))  ⟩
         twiceR ∙ evenR ⊆ twiceR
-      ⇐⟨ (subst (λ x → twiceR ∙ evenR ⊆ x) (≡r-sym (≡r-promote (∙-id-r twiceR)))  ⟩
+      ⇐⟨ subst (λ x → twiceR ∙ evenR ⊆ x) (≡r-sym (≡r-promote (∙-id-r twiceR)))  ⟩
         twiceR ∙ evenR ⊆ twiceR ∙ Id
       ⇐⟨ ∙-monotony ⟩
         (twiceR ⊆ twiceR × evenR ⊆ Id)
