@@ -3,6 +3,51 @@
 This is the place where (more or less) stable releases of my RW library will be published.
 For a more in-depth description of what's going on, please check my [main repo](https://github.com/VictorCMiraldo/msc-agda-tactics).
 
+The *RW* lib
+============
+
+For those that are tired of writing `subst` and `cong` whose first argument is a horrible
+lambda abstraction, there might be a solution in the horizon. This library is mainly targeted
+at my [Relational Algebra library](https://github.com/VictorCMiraldo/msc-agda-tactics/tree/master/Agda/Rel),
+but has shown motivating results with Agda's Propositional Equality.
+
+Here's an excerpt from a simple [case study](https://github.com/VictorCMiraldo/msc-agda-tactics/blob/master/Agda/Rel/CaseStudies/Simple1.agda) where we prove that the `twice` function satisfies the `even` predicate as
+a pre and post condition.
+
+    twiceIsEven : (twiceR ∙ evenR ⊆ evenR ∙ twiceR) ⇐ Unit
+    twiceIsEven
+      = begin
+        twiceR ∙ evenR ⊆ evenR ∙ twiceR
+      ⇐⟨ (tactic (by (quote evenLemma))) ⟩
+        twiceR ∙ evenR ⊆ (ρ twiceR) ∙ twiceR
+      ⇐⟨ (tactic (by (quote ρ-intro))) ⟩
+        twiceR ∙ evenR ⊆ twiceR
+      ⇐⟨ (tactic (by (quote ∙-id-r))) ⟩
+        twiceR ∙ evenR ⊆ twiceR ∙ Id
+      ⇐⟨ ∙-monotony ⟩
+        (twiceR ⊆ twiceR × evenR ⊆ Id)
+      ⇐⟨ (λ _ → ⊆-refl , φ⊆Id) ⟩
+        Unit
+      ∎
+      
+And below you'll find the same proof without using the `by` tactic.
+
+    twiceIsEven : (twiceR ∙ evenR ⊆ evenR ∙ twiceR) ⇐ Unit
+    twiceIsEven
+      = begin
+        twiceR ∙ evenR ⊆ evenR ∙ twiceR
+      ⇐⟨ subst (λ x → twiceR ∙ evenR ⊆ x ∙ twiceR) (≡r-promote evenLemma)  ⟩
+        twiceR ∙ evenR ⊆ (ρ twiceR) ∙ twiceR
+      ⇐⟨ subst (λ x → twiceR ∙ evenR ⊆ x) (≡r-promote (ρ-intro twiceR))  ⟩
+        twiceR ∙ evenR ⊆ twiceR
+      ⇐⟨ (subst (λ x → twiceR ∙ evenR ⊆ x) (≡r-sym (≡r-promote (∙-id-r twiceR)))  ⟩
+        twiceR ∙ evenR ⊆ twiceR ∙ Id
+      ⇐⟨ ∙-monotony ⟩
+        (twiceR ⊆ twiceR × evenR ⊆ Id)
+      ⇐⟨ (λ _ → ⊆-refl , φ⊆Id) ⟩
+        Unit
+      ∎
+
 Using *RW*
 ==========
 
