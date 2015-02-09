@@ -126,18 +126,6 @@ module RW.Strategy where
           u2 = (g□ -↓ g2) >>= (unify ty1)
           σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
     in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s (Symmetry ∷ []))) (i1 NoUnification) σ
-
-  -- Tries to unify with a lifting of the action types.
-  -- Whenever the context is empty (which implies we'll have
-  -- no `ovar` in our goal), we need to change the action type
-  -- variables to something that opens up unification.
-  {-
-  lift-ty : RWData → Err StratErr UData
-  lift-ty (rw-data _ _ (_ ∷ _)) = i1 Nothing
-  lift-ty (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) [])
-    = let new-data = rw-data (hdₓ , g1 , g2) (hdₐ , lift-ivar id ty1 , lift-ivar id ty2) []
-      in (basic <|> basic-sym) new-data
-  -}
       
   -- Runs the unification strategies we know about
   -- in the given target terms.
