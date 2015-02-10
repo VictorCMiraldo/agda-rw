@@ -33,7 +33,7 @@ module RW.Language.UnificationLemmas where
 
   module Subterm (A : Set) ⦃ eq : Eq A ⦄ where
     open import Relation.Binary.PropositionalEquality renaming (setoid to ≡-setoid)
-    open N.Membership (≡-setoid (RTerm A)) using (_∈_)
+    open N.Membership (≡-setoid (RTerm A)) using (_∈_; find)
 
     Term : Set
     Term = RTerm A
@@ -51,27 +51,21 @@ module RW.Language.UnificationLemmas where
                             → t ≤ (rapp n ts)
         ≤-rapp2 : ∀{t ts n} → t ≤* ts 
                             → rapp n t ≤ rapp n ts
-
+    
     {-# TERMINATING #-}
-    lam-≤ : {a b : Term} → rlam a ≤ b → a ≤ b
-    lam-≤ ≤-refl      = ≤-lam ≤-refl
-    lam-≤ (≤-lam prf) = ≤-lam (lam-≤ prf)
-    lam-≤ (≤-rapp1 x) = ≤-rapp1 (N.map lam-≤ x)
-
-    rapp-≤-refl : ∀{n}{bs : List Term}
-                → All (λ b → b ≤ (rapp n bs)) bs
-    rapp-≤-refl = {!!}
+    ≤-pre-closed : {t₁ t₂ : Term}
+                    → termIsClosed t₂ → t₁ ≤ t₂
+                    → termIsClosed t₁
+    ≤-pre-closed t₂-closed ≤-refl = t₂-closed
+    ≤-pre-closed t₂-closed (≤-lam t₁≤t₂) = ≤-pre-closed t₂-closed t₁≤t₂
+    ≤-pre-closed t₂-closed (≤-rapp1 x) with find x
+    ...| t , t∈ts , f = ≤-pre-closed (lookup t₂-closed t∈ts) f
+    ≤-pre-closed t₂-closed (≤-rapp2 x) = ≤-pre-closed* t₂-closed x
       where
-        rapp-drop-head : ∀{n}{x b : Term}{bs : List Term}
-                       → x ≤ rapp n bs → x ≤ rapp n (x ∷ bs)
-        rapp-drop-head ≤-refl = ≤-rapp1 (here ≤-refl)
-        rapp-drop-head (≤-rapp1 x) = ≤-rapp1 (here ≤-refl)
-        rapp-drop-head (≤-rapp2 x) = ≤-rapp1 (here ≤-refl)
-
-    rapp-≤ : ∀{n}{a : Term}{bs : List Term}
-           → rapp n bs ≤ a → All (λ b → b ≤ a) bs
-    rapp-≤ {n} {a = .(rapp _ _)} ≤-refl = rapp-≤-refl
-    rapp-≤ {bs = []} (≤-lam prf) = []
-    rapp-≤ {bs = x ∷ bs} (≤-lam prf) = {!!}
-    rapp-≤ (≤-rapp1 x) = {!!}
-    rapp-≤ (≤-rapp2 x) = {!!}
+        ≤-pre-closed* : {ts us : List Term}
+                      → All termIsClosed us → ts ≤* us
+                      → All termIsClosed ts
+        ≤-pre-closed* [] ≤*-nil = []
+        ≤-pre-closed* (px ∷ all) ≤*-nil = []
+        ≤-pre-closed* (px ∷ all) (≤*-sub x₁ ts≤us) 
+          = ≤-pre-closed px x₁ ∷ ≤-pre-closed* all ts≤us
