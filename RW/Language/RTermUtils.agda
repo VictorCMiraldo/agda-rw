@@ -112,25 +112,19 @@ module RW.Language.RTermUtils where
 
   -- Structural Manipulation
 
-  -- Lift ivar's to ovar's
   {-# TERMINATING #-}
-  {-
-  lift-ivar' : ∀{a}{A : Set a} → ℕ → (A → ℕ) → RTerm A → RTerm ℕ
-  lift-ivar' d f (ovar x) = ovar (f x)
-  lift-ivar' d f (ivar n) with d ≤? n
-  ...| yes d≤n = ovar n
-  ...| no  n>d = ivar n
-  lift-ivar' d f (rlit l) = rlit l
-  lift-ivar' d f (rlam t) = rlam (lift-ivar' (suc d) f t)
-  lift-ivar' d f (rapp n ts) = rapp n (map (lift-ivar' d f) ts)
-  -}
-
+  lift-ivar' : ℕ → RTerm ⊥ → RTerm ℕ
+  lift-ivar' _ (ovar ())
+  lift-ivar' d (ivar n) with d ≤? n
+  ...| yes _ = ovar n
+  ...| no  _ = ivar n
+  lift-ivar' _ (rlit l) = rlit l
+  lift-ivar' d (rlam t) = rlam (lift-ivar' (suc d) t)
+  lift-ivar' d (rapp n ts) = rapp n (map (lift-ivar' d) ts)
+  
+  -- Lift ivar's to ovar's
   lift-ivar : RTerm ⊥ → RTerm ℕ
-  lift-ivar (ovar ())
-  lift-ivar (ivar n) = ovar n
-  lift-ivar (rlit l) = rlit l
-  lift-ivar (rlam t) = rlam (lift-ivar t)
-  lift-ivar (rapp n ts) = rapp n (map lift-ivar ts) 
+  lift-ivar = lift-ivar' 0
   
   -- Models a binary application
   RBinApp : ∀{a} → Set a → Set _

@@ -314,32 +314,21 @@ module RW.Language.RTerm where
 
   private
     mutual
-      -- We'll keep a counter on the number of
-      -- ovar's we find. We might need to add the correct number of
-      -- lambdas around.
-      trevnoc' : RTerm ℕ → ℕ × AgTerm
-      trevnoc' (ovar x) = 1 , var x []
-      trevnoc' (ivar n) = 0 , var n []
-      trevnoc' (rlit l) = 0 , lit l
-      trevnoc' (rlam t) with trevnoc' t
-      ...| (r , t') = r , lam visible (abs "_" t')
-      trevnoc' (rapp (rcon x) ts) with trevnocChildren ts
-      ...| (r , a)  = r , con x a
-      trevnoc' (rapp (rdef x) ts) with trevnocChildren ts
-      ...| (r , a)  = r , def x a
-      trevnoc' (rapp impl (t1 ∷ t2 ∷ []))
-        with trevnoc' t1 | trevnoc' t2
-      ...| (r1 , t1') | (r2 , t2') = r1 + r2 , pi (arg (arg-info visible relevant) (el unknown t1')) 
-                                                  (abs "_" (el unknown t2'))
+      trevnoc' : RTerm ⊥ → AgTerm
+      trevnoc' (ovar ())
+      trevnoc' (ivar n) = var n []
+      trevnoc' (rlit l) = lit l
+      trevnoc' (rlam t) = lam visible (abs "_" (trevnoc' t))
+      trevnoc' (rapp (rcon x) ts) = con x (trevnocChildren ts)
+      trevnoc' (rapp (rdef x) ts) = def x (trevnocChildren ts)
+      trevnoc' (rapp impl (t1 ∷ t2 ∷ [])) = pi (arg (arg-info visible relevant) 
+               (el unknown (trevnoc' t1))) 
+               (abs "_" (el unknown (trevnoc' t2)))
       trevnoc' (rapp impl _) = error "impl should have two arguments... always."
 
-      trevnocChildren : List (RTerm ℕ) → ℕ × List (Arg AgTerm)
-      trevnocChildren [] = 0 , []
-      trevnocChildren (x ∷ xs) with trevnoc' x | trevnocChildren xs
-      ...| (r , x') | (rs , xs') = r + rs , arg (arg-info visible relevant) x' ∷ xs'
+      trevnocChildren : List (RTerm ⊥) → List (Arg AgTerm)
+      trevnocChildren []        = []
+      trevnocChildren (x ∷ xs)  = arg (arg-info visible relevant) (trevnoc' x) ∷ trevnocChildren xs
 
-  -- TODO: TOTHINK:
-  --   How about allowing only (RTerm ⊥) to be translated to and from
-  --   agda?
-  R2AgTerm : RTerm ℕ → AgTerm
-  R2AgTerm = p2 ∘ trevnoc'
+  R2AgTerm : RTerm ⊥ → AgTerm
+  R2AgTerm = trevnoc'

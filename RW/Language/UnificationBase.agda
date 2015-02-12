@@ -21,7 +21,7 @@ open import RW.Language.RTerm
 -- (RTerm ℕ) to a (RTerm (Fin n)), for a given n ∈ ℕ.
 --
 --
-module RW.Language.Unification where
+module RW.Language.UnificationBase where
 
   -----------------------------------------
   -- Unification by Structural Recursion
@@ -118,23 +118,6 @@ module RW.Language.Unification where
 
   Fin2RTerm : ∀{n} → FinTerm n → RTerm ℕ
   Fin2RTerm = replace-A (ovar ∘ toℕ)
-
-  -- Casting of (RTerm ⊥) to FinTerm
-  mutual
-    ⊥2FinTerm : RTerm ⊥ → ∃ FinTerm
-    ⊥2FinTerm (ovar ())
-    ⊥2FinTerm (ivar n) = 0 , ivar n
-    ⊥2FinTerm (rlit l) = 0 , rlit l
-    ⊥2FinTerm (rlam t) with ⊥2FinTerm t
-    ...| (n , t') = n , rlam t'
-    ⊥2FinTerm (rapp n ts) with ⊥2FinTerm* ts
-    ...| (k , ts') = k , rapp n ts'
-    
-    ⊥2FinTerm* : List (RTerm ⊥) → ∃ (List ∘ FinTerm)
-    ⊥2FinTerm* [] = 0 , []
-    ⊥2FinTerm* (x ∷ xs) with ⊥2FinTerm x | ⊥2FinTerm* xs
-    ...| kx , x' | kxs , xs' with match x' xs'
-    ...| rx , rxs = kx ∧ kxs , rx ∷ rxs
 
   --------------------------------------------------
   -- Monadic Boilerplate
@@ -259,52 +242,66 @@ module RW.Language.Unification where
   unifyFin : ∀ {m} → (t₁ t₂ : FinTerm m) → Maybe (∃ (Subst m))
   unifyFin {m} t₁ t₂ = unifyAcc t₁ t₂ (m , nil)
 
+
   --------------------------------------------------------
   -- Interface to RTerm ℕ
+  module UnsafeInterface where
+
+    -- Casting of (RTerm ⊥) to FinTerm
+    mutual
+      ⊥2FinTerm : RTerm ⊥ → ∃ FinTerm
+      ⊥2FinTerm (ovar ())
+      ⊥2FinTerm (ivar n) = 0 , ivar n
+      ⊥2FinTerm (rlit l) = 0 , rlit l
+      ⊥2FinTerm (rlam t) with ⊥2FinTerm t
+      ...| (n , t') = n , rlam t'
+      ⊥2FinTerm (rapp n ts) with ⊥2FinTerm* ts
+      ...| (k , ts') = k , rapp n ts'
+    
+      ⊥2FinTerm* : List (RTerm ⊥) → ∃ (List ∘ FinTerm)
+      ⊥2FinTerm* [] = 0 , []
+      ⊥2FinTerm* (x ∷ xs) with ⊥2FinTerm x | ⊥2FinTerm* xs
+      ...| kx , x' | kxs , xs' with match x' xs'
+      ...| rx , rxs = kx ∧ kxs , rx ∷ rxs
   
-  -- TODO: Make RSubst into List (ℕ × RTerm ⊥)
-  RSubst : Set
-  RSubst = List (ℕ × RTerm ℕ)
+    RSubst : Set
+    RSubst = List (ℕ × RTerm ℕ)
 
-  private
-    projSubst : ∀{n m} → Subst n m → RSubst
-    projSubst nil = []
-    projSubst (snoc s t x) = (toℕ x , Fin2RTerm t) ∷ projSubst s
+    private
+      projSubst : ∀{n m} → Subst n m → RSubst
+      projSubst nil = []
+      projSubst (snoc s t x) = (toℕ x , Fin2RTerm t) ∷ projSubst s
+
+    sortSubst : RSubst → RSubst
+    sortSubst [] = []
+    sortSubst ((i , t) ∷ s) = insert (i , t) (sortSubst s)
       where
-        -- TODO: plug this guy in
-        Fin2RTerm⊥ : FinTerm zero → RTerm ⊥
-        Fin2RTerm⊥ = replace-A (λ ())
+        insert : (ℕ × RTerm ℕ) → RSubst → RSubst
+        insert (i , t) [] = (i , t) ∷ []
+        insert (i , t) (x ∷ xs) with total i (p1 x)
+        ...| i1 i≤x = x ∷ insert (i , t) xs -- (i , t) ∷ x ∷ xs
+        ...| i2 i>x = (i , t) ∷ x ∷ xs -- x ∷ insert (i , t) xs
+  
+    private
+      overlaps : (ℕ × RTerm ℕ) → RSubst → Maybe RSubst
+      overlaps r [] = just (r ∷ [])
+      overlaps (i , ti) ((j , tj) ∷ s)
+        with i ≟-ℕ j | ti ≟-RTerm tj
+      ...| yes _ | yes _ = just []
+      ...| yes _ | no  _ = nothing
+      ...| no  _ | _     = overlaps (i , ti) s
 
-  sortSubst : RSubst → RSubst
-  sortSubst [] = []
-  sortSubst ((i , t) ∷ s) = insert (i , t) (sortSubst s)
-    where
-      insert : (ℕ × RTerm ℕ) → RSubst → RSubst
-      insert (i , t) [] = (i , t) ∷ []
-      insert (i , t) (x ∷ xs) with total i (p1 x)
-      ...| i1 i≤x = x ∷ insert (i , t) xs -- (i , t) ∷ x ∷ xs
-      ...| i2 i>x = (i , t) ∷ x ∷ xs -- x ∷ insert (i , t) xs
+    _++ᵣ_ : RSubst → RSubst → Maybe RSubst
+    [] ++ᵣ s       = just s
+    (r ∷ rs) ++ᵣ s with overlaps r s
+    ...| nothing = nothing
+    ...| just l  = (_++-List_ l) <$> (rs ++ᵣ s)
 
-  private
-    overlaps : (ℕ × RTerm ℕ) → RSubst → Maybe RSubst
-    overlaps r [] = just (r ∷ [])
-    overlaps (i , ti) ((j , tj) ∷ s)
-      with i ≟-ℕ j | ti ≟-RTerm tj
-    ...| yes _ | yes _ = just []
-    ...| yes _ | no  _ = nothing
-    ...| no  _ | _     = overlaps (i , ti) s
-
-  _++ᵣ_ : RSubst → RSubst → Maybe RSubst
-  [] ++ᵣ s       = just s
-  (r ∷ rs) ++ᵣ s with overlaps r s
-  ...| nothing = nothing
-  ...| just l  = (_++-List_ l) <$> (rs ++ᵣ s)
-
-  -- Unilateral unification.
-  --
-  --  Since t₂ is of type (RTerm ⊥), we are pretty sure it does not
-  --  have any 'ovar' inside, therefore is t₁ that drives unification.
-  unify : (t₁ : RTerm ℕ)(t₂ : RTerm ⊥) → Maybe RSubst
-  unify t₁ t₂ with R2FinTerm t₁ | ⊥2FinTerm t₂
-  ...| (_ , f₁) | (_ , f₂) with match f₁ f₂
-  ...| r₁ , r₂ = (sortSubst ∘ projSubst ∘ p2) <$> unifyFin r₁ r₂
+    -- Unilateral unification.
+    --
+    --  Since t₂ is of type (RTerm ⊥), we are pretty sure it does not
+    --  have any 'ovar' inside, therefore is t₁ that drives unification.
+    unify : (t₁ : RTerm ℕ)(t₂ : RTerm ⊥) → Maybe RSubst
+    unify t₁ t₂ with R2FinTerm t₁ | ⊥2FinTerm t₂
+    ...| (_ , f₁) | (_ , f₂) with match f₁ f₂
+    ...| r₁ , r₂ = (sortSubst ∘ projSubst ∘ p2) <$> unifyFin r₁ r₂

@@ -2,7 +2,7 @@ open import Prelude
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import RW.Language.RTerm
-open import RW.Language.RTermUtils using (hole2Absℕ)
+open import RW.Language.RTermUtils using (hole2Abs)
 open import RW.Language.Unification using (RSubst)
 open import RW.Utils.Error
 open import RW.Strategy
@@ -18,13 +18,13 @@ module RW.Strategy.PropEq where
     ≡-when pat-≡ pat-≡ = true
     ≡-when _     _     = false
 
-    fixTrs : Trs → RTerm ℕ → RTerm ℕ
+    fixTrs : Trs → RTerm ⊥ → RTerm ⊥
     fixTrs Symmetry term = rapp (rdef (quote sym)) (term ∷ [])
 
-    ≡-how : Name → UData → Err StratErr (RTerm ℕ)
+    ≡-how : Name → UData → Err StratErr (RTerm ⊥)
     ≡-how act (u-data g□ σ trs)
       = i2 (rapp (rdef (quote cong))
-                 ( hole2Absℕ g□
+                 ( hole2Abs g□
                  ∷ foldr fixTrs (makeApp act σ) trs
                  ∷ [])
            )

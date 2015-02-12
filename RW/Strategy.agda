@@ -145,7 +145,7 @@ module RW.Strategy where
     field
       when : RTermName → RTermName → Bool
 
-      how  : Name → UData → Err StratErr (RTerm ℕ)
+      how  : Name → UData → Err StratErr (RTerm ⊥)
 
   -- For now, we'll use a naive list to implement a TStrat
   -- database.
@@ -153,12 +153,12 @@ module RW.Strategy where
   TStratDB = List TStrat
 
   -- Utility to run a list of TStrat's.
-  runTStrats : TStratDB → RWData → Name → UData → Err StratErr (RTerm ℕ)
+  runTStrats : TStratDB → RWData → Name → UData → Err StratErr (RTerm ⊥)
   runTStrats [] _ = λ _ _ → i1 NoTStrat
   runTStrats (s ∷ ss) rw with TStrat.when s (goal-name rw) (act-name rw)
   ...| false = runTStrats ss rw
   ...| true  = TStrat.how s 
 
   -- From a name and a substitution create an application.
-  makeApp : Name → RSubst → RTerm ℕ
+  makeApp : Name → RSubst → RTerm ⊥
   makeApp act σ = rapp (rdef act) (map p2 σ)
