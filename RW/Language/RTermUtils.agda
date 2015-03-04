@@ -149,3 +149,8 @@ module RW.Language.RTermUtils where
   --    how should we open their types?
   typeResult t = just t
   -- typeResult _ = nothing
+
+  -- Gives the length of a 'impl' chain.
+  typeArity : ∀{a}{A : Set a} → RTerm A → ℕ
+  typeArity (rapp impl (t1 ∷ t2 ∷ [])) = suc (typeArity t2)
+  typeArity _                          = 0
