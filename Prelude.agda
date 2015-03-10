@@ -35,12 +35,13 @@ module Prelude where
     public
 
   open import Data.Fin.Properties 
+    using ()
     renaming (_≟_ to _≟-Fin_) 
     public
 
   open import Data.List 
     using (List; _∷_; []; map; _++_; zip; filter;
-           all; any; concat; foldr)
+           all; any; concat; foldr; reverse)
     public
 
   open import Data.Product

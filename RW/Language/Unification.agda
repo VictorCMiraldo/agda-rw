@@ -6,6 +6,12 @@ open import Data.List.All as A
 open import Data.Nat renaming (decTotalOrder to decTotalOrder-ℕ)
 open import Relation.Binary using (module DecTotalOrder)
 
+--------------------------------------
+-- OBSOLETE                         --
+--   See RW.Language.Instantiation  --
+--------------------------------------
+
+
 -- Here we provide a single-way unification, that is,
 -- (unify t₁ t₂) will be 'driven' by t₁, since t₂ has
 -- no variables.
@@ -26,11 +32,10 @@ open import Relation.Binary using (module DecTotalOrder)
 module RW.Language.Unification where
 
   open import RW.Language.RTerm
+  open import RW.Language.FinTerm
   open import RW.Language.UnificationBase 
-    using (FinTerm; _<$>_; _<*>_; _for_; R2FinTerm)
+    using (_<$>_; _<*>_; _for_)
     public
-
-  open DecTotalOrder decTotalOrder-ℕ using (total)
 
   {-# TERMINATING #-}
   termIsClosed : {A : Set} → RTerm A → Set

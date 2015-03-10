@@ -4,7 +4,8 @@ open import Data.String
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
-open import RW.Language.Unification
+open import RW.Language.FinTerm
+open import RW.Language.Instantiation
 
 -- Strategy Module.
 --
@@ -53,8 +54,8 @@ module RW.Strategy where
     constructor rw-data
     field 
       goal   : RBinApp ⊥
-      act    : RBinApp ℕ
-      actℕ   : ℕ 
+      actℕ   : ℕ
+      act    : ∃ (RBinApp ∘ Fin)
       ctx    : List (RTerm ⊥)
     
     goal-name : RTermName
@@ -66,12 +67,7 @@ module RW.Strategy where
     goal-2 = p2 (p2 goal)
 
     act-name : RTermName
-    act-name = p1 act
-
-    act-1 : RTerm ℕ
-    act-1 = p1 (p2 act)
-    act-2 : RTerm ℕ
-    act-2 = p2 (p2 act)
+    act-name = p1 (p2 act)
 
   open RWData
 
@@ -113,25 +109,25 @@ module RW.Strategy where
   -- Basic unification
   -- TODO: how to take care of symmetry for the case where action receives zero arguments?
   basic : RWData → Err StratErr UData
-  basic (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) zero _ )
+  basic (rw-data (hdₓ , g1 , g2) zero (_ , (hdₐ , ty1 , ty2)) _ )
     = let g□ = g1 ∩↑ g2
       in i2 (u-data (⊥2UnitCast g□) [] [])
-  basic (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) tn _ )
+  basic (rw-data (hdₓ , g1 , g2) tn (_ , (hdₐ , ty1 , ty2))  _ )
     = let g□ = g1 ∩↑ g2
-          u1 = (g□ -↓ g1) >>= (unify ty1)
-          u2 = (g□ -↓ g2) >>= (unify ty2)
-          σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
-    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s [])) (i1 NoUnification) σ
+          u1 = (g□ -↓ g1) >>= (inst ty1)
+          u2 = (g□ -↓ g2) >>= (inst ty2)
+          σ  = μ ((_++ₓ_ <$> u1) <*> u2)
+    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s [])) (i1 NoUnification) (σ >>= X2RSubst)
   
 
   -- Unification over the symmetric action type.
   basic-sym : RWData → Err StratErr UData
-  basic-sym (rw-data (hdₓ , g1 , g2) (hdₐ , ty1 , ty2) tn _ )
+  basic-sym (rw-data (hdₓ , g1 , g2) tn (_ , (hdₐ , ty1 , ty2)) _ )
     = let g□ = g1 ∩↑ g2
-          u1 = (g□ -↓ g1) >>= (unify ty2)
-          u2 = (g□ -↓ g2) >>= (unify ty1)
-          σ  = μ ((_++ᵣ_ <$> u1) <*> u2)
-    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s (Symmetry ∷ []))) (i1 NoUnification) σ
+          u1 = (g□ -↓ g1) >>= (inst ty2)
+          u2 = (g□ -↓ g2) >>= (inst ty1)
+          σ  = μ ((_++ₓ_ <$> u1) <*> u2)
+    in maybe (λ s → i2 (u-data (⊥2UnitCast g□) s (Symmetry ∷ []))) (i1 NoUnification) (σ >>= X2RSubst)
       
   -- Runs the unification strategies we know about
   -- in the given target terms.

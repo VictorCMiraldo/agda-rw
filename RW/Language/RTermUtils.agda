@@ -138,17 +138,9 @@ module RW.Language.RTermUtils where
 
   -- Given a 'impl' chain, return it's result.
   typeResult : ∀{a}{A : Set a}
-             → RTerm A → Maybe (RTerm A)
-  typeResult (rapp impl (t1 ∷ t2 ∷ [])) = aux t2
-    where
-      aux : ∀{a}{A : Set a} → RTerm A → Maybe (RTerm A)
-      aux (rapp impl (t1 ∷ t2 ∷ [])) = aux t2
-      aux t                          = just t
-  -- TODO:
-  --    For lemma's with no arguments,
-  --    how should we open their types?
-  typeResult t = just t
-  -- typeResult _ = nothing
+             → RTerm A → RTerm A
+  typeResult (rapp impl (t1 ∷ t2 ∷ [])) = typeResult t2
+  typeResult t = t
 
   -- Gives the length of a 'impl' chain.
   typeArity : ∀{a}{A : Set a} → RTerm A → ℕ

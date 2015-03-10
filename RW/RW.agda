@@ -5,7 +5,7 @@ open import Data.String using (String)
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
-open import RW.Language.Unification
+open import RW.Language.FinTerm
 
 open import RW.Strategy
 
@@ -26,10 +26,19 @@ module RW.RW (db : TStratDB) where
     unarg : {A : Set} → Arg A → A
     unarg (arg _ x) = x
 
+  -- We need to translate types to FinTerms, so we know how many variables
+  -- we're expecting to guess from instantiation.
+  Ag2RTypeFin : AgType → ∃ FinTerm
+  Ag2RTypeFin ty
+    = let rty    = Ag2RType ty
+          rtyRes = typeResult rty
+      in R2FinTerm (lift-ivar rtyRes)
+
+
   make-RWData : Name → AgTerm → List (Arg AgType) → Err StratErr RWData
-  make-RWData act goal ctx with Ag2RTerm goal | Ag2RType (type act) | map (Ag2RType ∘ unarg) ctx
-  ...| g' | ty | ctx' with forceBinary g' | (typeResult ty) >>= forceBinary ∘ lift-ivar
-  ...| just g | just a = return (rw-data g a (typeArity ty) ctx')
+  make-RWData act goal ctx with Ag2RTerm goal | Ag2RTypeFin (type act) | map (Ag2RType ∘ unarg) ctx
+  ...| g' | tyℕ , ty | ctx' with forceBinary g' | forceBinary (typeResult ty)
+  ...| just g | just a = return (rw-data g (typeArity ty) (tyℕ , a) ctx')
   ...| just _ | nothing = throwError (Custom "Something strange happened with ((typeResult ty) >>= forceBinary)")
   ...| nothing | just _ = throwError (Custom "Something strange happened with (forceBinary g)")
   ...| nothing | nothing = throwError (Custom "My brain just exploded.") 
