@@ -187,6 +187,10 @@ module RW.Language.RTerm where
     ...| no  xs≢ys = no (xs≢ys ∘ p2 ∘ ∷-inj)
     ...| yes xs≡ys = yes (cong (_∷_ y) xs≡ys)
 
+  instance
+    eq-RTerm : {A : Set}{{ eqA : Eq A }} → Eq (RTerm A)
+    eq-RTerm = eq compRTerm
+
   -- Infix version
 
   _≟-RTerm_ : ∀{A} ⦃ eqA : Eq A ⦄ → (x y : RTerm A) → Dec (x ≡ y)
