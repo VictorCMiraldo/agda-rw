@@ -68,9 +68,12 @@ module RW.Language.Instantiation where
   mutual
     instAcc : {n : ℕ} → FinTerm n → RTerm ⊥ → X n → Maybe (X n)
     instAcc (ovar x) t s = extend-X x t s
+    {-
     instAcc (ivar n) (ivar m) s with n ≟-ℕ m
     ...| yes _ = just s
     ...| no  _ = nothing
+    -}
+    instAcc (ivar _) _ s = just s
     instAcc (rlit l) (rlit k) s with l ≟-Lit k 
     ...| yes _ = just s
     ...| no  _ = nothing

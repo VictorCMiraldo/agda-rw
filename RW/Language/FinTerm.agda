@@ -1,14 +1,15 @@
 open import Prelude renaming (_++_ to _++-List_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; zero; _+_; _≤_; z≤n; s≤s) renaming (decTotalOrder to decTotalOrder-ℕ)
+open import Data.Nat using (ℕ; suc; zero; _+_; _≤_; z≤n; s≤s; _≤?_) renaming (decTotalOrder to decTotalOrder-ℕ)
 open import Data.Nat.Properties as ℕ-Props
 open import Data.Nat.Properties.Simple using (+-suc; +-comm)
-open import Data.Fin using (Fin; toℕ) renaming (inject+ to finject; raise to fraise; zero to fzero; suc to fsuc)
+open import Data.Fin using (Fin; toℕ; fromℕ≤) renaming (inject+ to finject; raise to fraise; zero to fzero; suc to fsuc)
 open import Relation.Binary.PropositionalEquality as P using (_≡_; refl; cong; sym)
 open import Algebra using (module CommutativeSemiring; module DistributiveLattice)
 open import Relation.Binary using (module DecTotalOrder)
 
 open import RW.Language.RTerm
+open import RW.Language.RTermUtils using (typeArity; typeResult)
 
 -- Utility Module to handle (RTerm (Fin n)), or,
 -- finite-scope terms.
@@ -116,3 +117,12 @@ module RW.Language.FinTerm where
 
   Fin2RTerm : ∀{n} → FinTerm n → RTerm ℕ
   Fin2RTerm = replace-A (ovar ∘ toℕ)
+
+  R2FinType : RTerm ℕ → ∃ FinTerm
+  R2FinType t with typeArity t
+  ...| ar = ar , replace-A fix-ovars t
+    where
+      fix-ovars : ℕ → FinTerm ar
+      fix-ovars fn with suc fn ≤? ar
+      ...| yes prf = ovar (fromℕ≤ prf)
+      ...| no  _   = ivar fn
