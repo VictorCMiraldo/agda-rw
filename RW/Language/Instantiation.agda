@@ -95,9 +95,8 @@ module RW.Language.Instantiation where
   ----------------------------------
   -- * Interface
 
-  open import RW.Language.Unification
-    using (RSubst)
-    public
+  RSubst : Set
+  RSubst = List (ℕ × RTerm ⊥)
 
   private
     X2RSubst0 : {n : ℕ} → X n → Maybe RSubst
