@@ -29,16 +29,14 @@ module RW.RW (db : TStratDB) where
   -- We need to translate types to FinTerms, so we know how many variables
   -- we're expecting to guess from instantiation.
   Ag2RTypeFin : AgType → ∃ FinTerm
-  Ag2RTypeFin ty
-    = let rty    = Ag2RType ty
-          rtyRes = typeResult rty
-      in R2FinTerm (lift-ivar rtyRes)
+  Ag2RTypeFin = R2FinType ∘ lift-ivar ∘ Ag2RType
 
+  -- TODO: fix the duality: "number of ivar's lifted to ovar's vs. parameters we need to guess"
 
   make-RWData : Name → AgTerm → List (Arg AgType) → Err StratErr RWData
   make-RWData act goal ctx with Ag2RTerm goal | Ag2RTypeFin (type act) | map (Ag2RType ∘ unarg) ctx
   ...| g' | tyℕ , ty | ctx' with forceBinary g' | forceBinary (typeResult ty)
-  ...| just g | just a = return (rw-data g (typeArity ty) (tyℕ , a) ctx')
+  ...| just g | just a = return (rw-data g tyℕ a ctx')
   ...| just _ | nothing = throwError (Custom "Something strange happened with ((typeResult ty) >>= forceBinary)")
   ...| nothing | just _ = throwError (Custom "Something strange happened with (forceBinary g)")
   ...| nothing | nothing = throwError (Custom "My brain just exploded.") 

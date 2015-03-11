@@ -55,7 +55,7 @@ module RW.Strategy where
     field 
       goal   : RBinApp ⊥
       actℕ   : ℕ
-      act    : ∃ (RBinApp ∘ Fin)
+      act    : RBinApp (Fin actℕ)
       ctx    : List (RTerm ⊥)
     
     goal-name : RTermName
@@ -67,7 +67,7 @@ module RW.Strategy where
     goal-2 = p2 (p2 goal)
 
     act-name : RTermName
-    act-name = p1 (p2 act)
+    act-name = p1 act
 
   open RWData
 
@@ -109,10 +109,10 @@ module RW.Strategy where
   -- Basic unification
   -- TODO: how to take care of symmetry for the case where action receives zero arguments?
   basic : RWData → Err StratErr UData
-  basic (rw-data (hdₓ , g1 , g2) zero (_ , (hdₐ , ty1 , ty2)) _ )
+  basic (rw-data (hdₓ , g1 , g2) zero (hdₐ , ty1 , ty2) _ )
     = let g□ = g1 ∩↑ g2
       in i2 (u-data (⊥2UnitCast g□) [] [])
-  basic (rw-data (hdₓ , g1 , g2) tn (_ , (hdₐ , ty1 , ty2))  _ )
+  basic (rw-data (hdₓ , g1 , g2) tn (hdₐ , ty1 , ty2)  _ )
     = let g□ = g1 ∩↑ g2
           u1 = (g□ -↓ g1) >>= (inst ty1)
           u2 = (g□ -↓ g2) >>= (inst ty2)
@@ -122,7 +122,7 @@ module RW.Strategy where
 
   -- Unification over the symmetric action type.
   basic-sym : RWData → Err StratErr UData
-  basic-sym (rw-data (hdₓ , g1 , g2) tn (_ , (hdₐ , ty1 , ty2)) _ )
+  basic-sym (rw-data (hdₓ , g1 , g2) tn (hdₐ , ty1 , ty2) _ )
     = let g□ = g1 ∩↑ g2
           u1 = (g□ -↓ g1) >>= (inst ty2)
           u2 = (g□ -↓ g2) >>= (inst ty1)
