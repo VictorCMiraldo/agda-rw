@@ -37,8 +37,8 @@ module RW.RW (db : TStratDB) where
   make-RWData act goal ctx with Ag2RTerm goal | Ag2RTypeFin (type act) | map (Ag2RType ∘ unarg) ctx
   ...| g' | tyℕ , ty | ctx' with forceBinary g' | forceBinary (typeResult ty)
   ...| just g | just a = return (rw-data g tyℕ a ctx')
-  ...| just _ | nothing = throwError (Custom "Something strange happened with ((typeResult ty) >>= forceBinary)")
-  ...| nothing | just _ = throwError (Custom "Something strange happened with (forceBinary g)")
+  ...| just _ | nothing = throwError (Custom "Something strange happened with the action")
+  ...| nothing | just _ = throwError (Custom "Something strange happened with the goal")
   ...| nothing | nothing = throwError (Custom "My brain just exploded.") 
 
   postulate

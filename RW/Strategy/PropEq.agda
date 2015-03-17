@@ -3,7 +3,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils using (hole2Abs)
-open import RW.Language.Unification using (RSubst)
+open import RW.Language.Instantiation using (RSubst)
 open import RW.Utils.Error
 open import RW.Strategy
 
