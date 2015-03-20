@@ -28,10 +28,12 @@ module RW.Language.Instantiation where
   just f <*> just x = just (f x)
   _      <*> _      = nothing
 
+  {-
   mapM : {A B : Set} → (A → Maybe B) → List A → Maybe (List B)
   mapM f = Prelude.foldr 
            (λ a → maybe (λ x → flip _∷_ x <$> f a) nothing) 
            (just [])
+  -}
 
   -------------------------------------------------
   -- Partial Substitutions

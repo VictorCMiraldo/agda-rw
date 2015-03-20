@@ -16,6 +16,11 @@ module RW.Utils.Monads where
 
   open Monad {{...}}
 
+  mapM : ∀{a}{M : Set a → Set a}{{ m : Monad M}}{A B : Set a} 
+       → (A → M B) → List A → M (List B)
+  mapM f []       = return []
+  mapM f (x ∷ la) = f x >>= (λ x' → mapM f la >>= return ∘ _∷_ x')
+
   -----------------
   -- Maybe Monad --
   -----------------
@@ -67,3 +72,23 @@ module RW.Utils.Monads where
 
   inc : Freshℕ Unit
   inc = get >>= (put ∘ suc)
+
+  ----------------
+  -- List Monad --
+  ----------------
+
+  NonDet : ∀{a} → Set a → Set a
+  NonDet A = List A
+
+  NonDetBind : ∀{a}{A B : Set a} → NonDet A → (A → NonDet B) → NonDet B
+  NonDetBind x f = concat (map f x)
+
+  NonDetRet : ∀{a}{A : Set a} → A → NonDet A
+  NonDetRet x = x ∷ []
+
+  instance
+    MonadNonDet : Monad {lz} NonDet
+    MonadNonDet = record
+      { return = NonDetRet
+      ; _>>=_  = NonDetBind
+      }

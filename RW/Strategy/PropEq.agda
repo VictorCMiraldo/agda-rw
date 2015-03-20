@@ -1,6 +1,7 @@
 open import Prelude
 open import Data.Maybe using (Maybe; just; nothing)
 
+open import RW.RW []
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils using (hole2Abs)
 open import RW.Language.Instantiation using (RSubst)
@@ -28,6 +29,9 @@ module RW.Strategy.PropEq where
                  ∷ foldr fixTrs (makeApp act σ) trs
                  ∷ [])
            )
+
+  by*-≡ : by*-tactic
+  by*-≡ = by* (quote trans)
 
   ≡-strat : TStrat
   ≡-strat = record

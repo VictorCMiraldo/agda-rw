@@ -143,6 +143,7 @@ module RW.Strategy where
   -- 
   -- Given the head of both our goal and action we
   -- should be able to guess a term that 'bridges' them.
+  -- 
   record TStrat : Set where
     field
       when : RTermName → RTermName → Bool
@@ -155,11 +156,12 @@ module RW.Strategy where
   TStratDB = List TStrat
 
   -- Utility to run a list of TStrat's.
+  -- Not only returns the resulting term, but also the selected TStrat.
   runTStrats : TStratDB → RWData → Name → UData → Err StratErr (RTerm ⊥)
   runTStrats [] _ = λ _ _ → i1 NoTStrat
   runTStrats (s ∷ ss) rw with TStrat.when s (goal-name rw) (act-name rw)
   ...| false = runTStrats ss rw
-  ...| true  = TStrat.how s 
+  ...| true  = TStrat.how s
 
   -- From a name and a substitution create an application.
   makeApp : Name → RSubst → RTerm ⊥
