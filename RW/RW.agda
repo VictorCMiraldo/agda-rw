@@ -7,6 +7,7 @@ open import Data.String using (String)
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
 open import RW.Language.FinTerm
+open import RW.Language.GoalGuesser
 
 open import RW.Strategy
 
@@ -46,27 +47,15 @@ module RW.RW (db : TStratDB) where
   -- a list l₁ ⋯ lₙ such that ∀ 0 < i ≤ n . tyᵢ : p1 lᵢ → p1 lᵢ₊₁ 
   Ag2RTypeFin* : RTerm ⊥ → List AgType → Maybe (List (RBinApp ⊥ × ∃ (RBinApp ∘ Fin)))
   Ag2RTypeFin* (rapp n (g₁ ∷ g₂ ∷ [])) tys 
-    =            mapM (forceBinary ∘ typeResult ∘ Ag2RType) tys
+    =            mapM (return ∘ Ag2RTypeFin) tys
+    >>=          mapM (λ v → forceBinary (typeResult (p2 v)) >>= (return ∘ (_,_ $ p1 v)))
     >>= λ tys' → (divideGoal (n , g₁ , g₂) tys' >>= assemble)
-    >>= λ gs   → return (map fixType (zip gs tys'))
+    >>= λ gs   → return (zip gs tys')
     where
       assemble : {A : Set} → List (RTerm A) → Maybe (List (RBinApp A))
       assemble (x1 ∷ x2 ∷ []) = just ((n , x1 , x2) ∷ [])
       assemble (x1 ∷ x2 ∷ l)  = assemble (x2 ∷ l) >>= return ∘ (_∷_ (n , x1 , x2))
       assemble _              = nothing
-
-      fixType : RBinApp ⊥ × RBinApp ⊥ → RBinApp ⊥ × ∃ (RBinApp ∘ Fin)
-      fixType (g , (n , ty1 , ty2)) with R2FinType (lift-ivar (rapp n (ty1 ∷ ty2 ∷ [])))
-      ...| tn , tr with forceBinary tr
-      ...| just (n' , ty1' , ty2') = g , tn , n' , ty1' , ty2'
-      -- The nothing branch is never occuring, we're receiving ty as a RBinApp,
-      -- both lift-ivar and R2FinType does not change the structure of the term itself.
-      -- It might change ivar's for ovar's, tho. Therefore, it's obvious that
-      -- the resulting type will be correctly converted back to a RBinApp.
-      -- TODO: However, proving this or refactoring where we ask for RBinApps would not be a bad idea! :)
-      ...| nothing                 = not-happening
-        where postulate not-happening : {A : Set} → A
-
   Ag2RTypeFin* _ _ = nothing
 
   make-RWData* : List Name → AgTerm → List (Arg AgType) → Err StratErr (List RWData)
@@ -100,7 +89,7 @@ module RW.RW (db : TStratDB) where
 
   join-tr : Name → List (RTerm ⊥) → RTerm ⊥
   join-tr _  []      = ivar 0
-  join-tr tr (x ∷ l) = foldr (λ h r → rapp (rdef tr) (h ∷ r ∷ [])) x l
+  join-tr tr (x ∷ l) = foldr (λ h r → rapp (rdef tr) (r ∷ h ∷ [])) x l
 
   by*-err : Name → List Name → List (Arg AgType) → AgTerm → Err StratErr AgTerm
   by*-err tr acts ctx goal 

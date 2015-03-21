@@ -59,6 +59,11 @@ module RW.Language.RTerm where
     rcon : Name → RTermName
     rdef : Name → RTermName
     impl : RTermName
+
+  showRTermName : RTermName → String
+  showRTermName (rcon x) = showName x
+  showRTermName (rdef x) = showName x
+  showRTermName impl     = "→"
   
   ----------------------------------------
   -- Equalities associated with RTermNames

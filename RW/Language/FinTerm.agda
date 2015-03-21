@@ -126,3 +126,6 @@ module RW.Language.FinTerm where
       fix-ovars fn with suc fn ≤? ar
       ...| yes prf = ovar (fromℕ≤ prf)
       ...| no  _   = ivar fn
+
+  Fin2RTerm⊥ : FinTerm zero → RTerm ⊥
+  Fin2RTerm⊥ = replace-A (λ ()) 

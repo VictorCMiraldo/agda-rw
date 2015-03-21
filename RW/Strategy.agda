@@ -1,11 +1,11 @@
 open import Prelude
 open import Data.Maybe using (Maybe; just; nothing) renaming (maybe′ to maybe)
-open import Data.String
+open import Data.String renaming (_++_ to _++s_)
 
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
 open import RW.Language.FinTerm
-open import RW.Language.Instantiation
+open import RW.Language.Instantiation 
 
 -- Strategy Module.
 --
@@ -28,7 +28,7 @@ module RW.Strategy where
     Nothing       : StratErr
     NoUnification : StratErr
     NoUStrat      : StratErr
-    NoTStrat      : StratErr
+    NoTStrat      : RTermName → RTermName → StratErr
     Custom        : String → StratErr
 
   instance
@@ -36,11 +36,12 @@ module RW.Strategy where
     IsError-StratErr = record { showError = showErr }
       where
         showErr : StratErr → String
-        showErr Nothing       = "Nothing; Internal msg passing flag."
-        showErr NoUnification = "No unification could be performed."
-        showErr NoUStrat      = "No suitable unification strategy found."
-        showErr NoTStrat      = "No suitable term stragety found."
-        showErr (Custom msg)  = "[!] " Data.String.++ msg
+        showErr Nothing        = "Nothing; Internal msg passing flag."
+        showErr NoUnification  = "No unification could be performed."
+        showErr NoUStrat       = "No suitable unification strategy found."
+        showErr (NoTStrat g a) = "No suitable term stragety found.\n" 
+                              ++s showRTermName g ++s ", " ++s showRTermName a
+        showErr (Custom msg)   = "[!] " Data.String.++ msg
 
   -------------------------
   -- Strategy Pipeline
@@ -158,7 +159,7 @@ module RW.Strategy where
   -- Utility to run a list of TStrat's.
   -- Not only returns the resulting term, but also the selected TStrat.
   runTStrats : TStratDB → RWData → Name → UData → Err StratErr (RTerm ⊥)
-  runTStrats [] _ = λ _ _ → i1 NoTStrat
+  runTStrats [] rw = λ _ _ → i1 (NoTStrat (goal-name rw) (act-name rw))
   runTStrats (s ∷ ss) rw with TStrat.when s (goal-name rw) (act-name rw)
   ...| false = runTStrats ss rw
   ...| true  = TStrat.how s
