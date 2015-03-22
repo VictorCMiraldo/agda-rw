@@ -11,6 +11,9 @@ lambda abstraction, there might be a solution in the horizon. This library is ma
 at my [Relational Algebra library](https://github.com/VictorCMiraldo/msc-agda-tactics/tree/master/Agda/Rel),
 but has shown motivating results with Agda's Propositional Equality.
 
+by tactic
+---------
+
 Here's an excerpt from a simple [case study](https://github.com/VictorCMiraldo/msc-agda-tactics/blob/master/Agda/Rel/CaseStudies/Simple1.agda) where we prove that the `twice` function satisfies the `even` predicate as
 a pre and post condition.
 
@@ -47,6 +50,41 @@ And below you'll find the same proof without using the `by` tactic.
       ⇐⟨ (λ _ → ⊆-refl , φ⊆Id) ⟩
         Unit
       ∎
+      
+by* tactic
+----------
+
+Sometimes, however, we apply a number of rewrites simoultaneously when we write pen and paper
+Mathematics. The `by*` tactic does exactly that. Given a list of actions to be applied, it will
+try to figure out where you plan to use those definitions (that is, finding the intermediate goals) 
+and will call the same backend as `by` for all of them. They are joined together using
+some sort of transitivity, to be provided by the user.
+
+Below is an excerpt of `RW.Strategy.PropEq`, where we define `by*-≡`.
+
+    open import RW.RW (≡-strat ∷ [])
+    
+    by*-≡ : by*-tactic
+    by*-≡ = by* (quote trans)
+    
+And here is some usage example. Note that some situations are very slow to run the first time.
+In this specific example we can easily wee why. The actions are expecting two and three arguments,
+respectively. The goal-searching will try to apply these actions *everywhere* in the term,
+with all possible scenarios for these arguments. The process halts when it finds a chain
+that connects the goals given by `quoteGoal`.
+    
+    f : (x y : ℕ) → (x + y) + 0 ≡ y + (x + 0)
+    f x y = tactic (by*-≡ (quote +-comm ∷ quote +-assoc ∷ []))
+    
+Another example, with a better runtime, follows.
+
+    g : {A B C : Set}(S : Rel A B)(R : Rel B C)
+      → (R ∙ S) ᵒ ≡r (S ᵒ ∙ Id) ∙ R ᵒ
+    g S R = tactic (by*-≡r (quote ᵒ-∙-distr ∷ quote ∙-id-r ∷ []))
+    
+The only difference between `by*-≡` and `by*-≡r` is the transitivity they use. Although
+slow, in general, both snippets typecheck.
+
 
 Using *RW*
 ==========
