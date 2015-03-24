@@ -69,6 +69,10 @@ module Prelude where
     using (_≡_; refl; sym; trans; cong; cong₂; subst)
     public
 
+  open import Data.Maybe 
+    using (Maybe; just; nothing)
+    public
+
   isTrue : ∀{a}{A : Set a} → Dec A → Bool
   isTrue (yes _) = true
   isTrue _       = false
@@ -78,3 +82,37 @@ module Prelude where
   takeWhile f (x ∷ xs) with f x
   ...| true = x ∷ takeWhile f xs
   ...| _    = takeWhile f xs
+
+
+  -- Some minor boilerplate to solve equality problem...
+  record Eq (A : Set) : Set where
+    constructor eq
+    field cmp : (x y : A) → Dec (x ≡ y)
+
+  open Eq {{...}}
+
+  instance
+    eq-ℕ : Eq ℕ
+    eq-ℕ = eq _≟-ℕ_
+
+    eq-Fin : ∀{n} → Eq (Fin n)
+    eq-Fin = eq _≟-Fin_
+
+    eq-⊥ : Eq ⊥
+    eq-⊥ = eq (λ x → ⊥-elim x)
+
+    eq-Maybe : ∀{A} ⦃ eqA : Eq A ⦄ → Eq (Maybe A)
+    eq-Maybe = eq decide
+      where 
+        just-inj : ∀{a}{A : Set a}{x y : A}
+                 → _≡_ {a} {Maybe A} (just x) (just y) → x ≡ y
+        just-inj refl = refl
+  
+        decide : {A : Set} ⦃ eqA : Eq A ⦄
+               → (x y : Maybe A) → Dec (x ≡ y)
+        decide nothing nothing   = yes refl
+        decide nothing (just _)  = no (λ ())
+        decide (just _) nothing  = no (λ ())
+        decide ⦃ eq f ⦄ (just x) (just y) with f x y
+        ...| yes x≡y = yes (cong just x≡y)
+        ...| no  x≢y = no (x≢y ∘ just-inj)

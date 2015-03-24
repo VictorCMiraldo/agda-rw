@@ -58,9 +58,11 @@ module RW.Language.GoalGuesser where
               = substRTermAux x m n >>= λ x' → return (p1 x' , (p2 x' ∷ la)) 
                                             ++ (substStep* la m n >>= return ∘ (λ p → p1 p , x ∷ p2 p))
 
+  -- Given a term and a type ty with n variables, will search for n subterms of t
+  -- in a non-deterministic fashion, and will instantiate them as parameters to ty.
   {-# TERMINATING #-}
   apply : {n : ℕ} → RTerm ⊥ → RBinApp (Fin n) → NonDet (RTerm ⊥)
-  -- If we have no more variables to instantiate with something on our type,
+  -- If we have no more variables to instantiate on our type,
   -- we can proceed to substitute.
   apply {n = zero}  g (_ , ty1 , ty2) 
     = g [ Fin2RTerm⊥ ty1 , Fin2RTerm⊥ ty2 ]
@@ -69,6 +71,7 @@ module RW.Language.GoalGuesser where
   apply {n = suc n} g t = inst g t >>= apply g
     where
       -- Easy way of discarding the last variable of a Fin n.
+      -- Mainly, we map Fin (1 + n) to 1 + Fin n.
       thin : {n : ℕ} → Fin (suc n) → Maybe (Fin n)
       thin {zero} _       = nothing
       thin {suc n} fz     = just fz
@@ -76,7 +79,8 @@ module RW.Language.GoalGuesser where
       ...| nothing = nothing
       ...| just x' = just (fs x')
 
-      
+      -- Given a closed term t, returns a substitution σ defined
+      -- by σ(n+1) = t, σ(k, k ≤ n) = var k.
       ▵_ : {n : ℕ} → RTerm ⊥ → Fin (suc n) → RTerm (Fin n)
       ▵_ {n} t x with thin x
       ...| nothing = replace-A (λ ()) t
@@ -90,6 +94,8 @@ module RW.Language.GoalGuesser where
       mk-inst-f (rlam t)    = return (▵ (rlam t)) ++ mk-inst-f t
       mk-inst-f (rapp n ts) = return (▵ (rapp n ts)) ++ concat (mapM mk-inst-f ts)
 
+      -- Given a term t and a type with (n+1) variables, instantiate the last variable
+      -- from the type with a non-deterministic subterm of t, returns the resulting type.
       inst : {n : ℕ} → RTerm ⊥ → RBinApp (Fin (suc n)) → NonDet (RBinApp (Fin n))
       inst {n} t (r , ty1 , ty2) = mk-inst-f {n} t >>= λ f → return (r , replace-A f ty1 , replace-A f ty2)
 
@@ -120,30 +126,32 @@ module RW.Language.GoalGuesser where
                                 >>= (λ g' → stepGoals g' ts 
                                 >>= return ∘ (_∷_ g))
 
-  goal : RTerm ⊥
-  goal = rapp (rdef (quote _≡_))
-    (rapp (rdef (quote _+_)) (ivar 0 ∷ ivar 1 ∷ []) ∷
-     rapp (rdef (quote _+_))
-     (ivar 0 ∷
-      rapp (rdef (quote _+_)) (ivar 1 ∷ rapp (rcon (quote zero)) [] ∷ [])
-      ∷ [])
-     ∷ [])
+  module Test where
 
-  binGoal : RBinApp ⊥
-  binGoal = rdef (quote _≡_)
-          , rapp (rdef (quote _+_)) (ivar 0 ∷ ivar 1 ∷ [])
-          , rapp (rdef (quote _+_)) (ivar 0 ∷ (rapp (rdef (quote _+_)) (ivar 1 ∷ (rapp (rcon (quote zero)) []) ∷ []) ∷ []))
+    goal : RTerm ⊥
+    goal = rapp (rdef (quote _≡_))
+      (rapp (rdef (quote _+_)) (ivar 0 ∷ ivar 1 ∷ []) ∷
+       rapp (rdef (quote _+_))
+       (ivar 0 ∷
+        rapp (rdef (quote _+_)) (ivar 1 ∷ rapp (rcon (quote zero)) [] ∷ [])
+        ∷ [])
+       ∷ [])
 
-  +-ri : RBinApp (Fin 1)
-  +-ri = rdef (quote _≡_)
-       , rapp (rdef (quote _+_)) (ovar fz ∷ rapp (rcon (quote zero)) [] ∷ [])
-       , ovar fz
+    binGoal : RBinApp ⊥
+    binGoal = rdef (quote _≡_)
+            , rapp (rdef (quote _+_)) (ivar 0 ∷ ivar 1 ∷ [])
+            , rapp (rdef (quote _+_)) (ivar 0 ∷ (rapp (rdef (quote _+_)) (ivar 1 ∷ (rapp (rcon (quote zero)) []) ∷ []) ∷ []))
 
-  +-a : RBinApp (Fin 3)
-  +-a = rdef (quote _≡_)
-      , rapp (rdef (quote _+_)) (rapp (rdef (quote _+_)) (ovar (fs $ fs fz) ∷ ovar (fs fz) ∷ []) ∷ ovar fz ∷ [])
-      , rapp (rdef (quote _+_)) (ovar (fs $ fs fz) ∷ rapp (rdef (quote _+_)) (ovar (fs fz) ∷ ovar fz ∷ []) ∷ [])
+    +-ri : RBinApp (Fin 1)
+    +-ri = rdef (quote _≡_)
+         , rapp (rdef (quote _+_)) (ovar fz ∷ rapp (rcon (quote zero)) [] ∷ [])
+         , ovar fz
 
-  
-  tylist : List (Σ ℕ (RBinApp ∘ Fin))
-  tylist = (1 , +-ri) ∷ (3 , +-a) ∷ []
+    +-a : RBinApp (Fin 3)
+    +-a = rdef (quote _≡_)
+        , rapp (rdef (quote _+_)) (rapp (rdef (quote _+_)) (ovar (fs $ fs fz) ∷ ovar (fs fz) ∷ []) ∷ ovar fz ∷ [])
+        , rapp (rdef (quote _+_)) (ovar (fs $ fs fz) ∷ rapp (rdef (quote _+_)) (ovar (fs fz) ∷ ovar fz ∷ []) ∷ [])
+
+
+    tylist : List (Σ ℕ (RBinApp ∘ Fin))
+    tylist = (1 , +-ri) ∷ (3 , +-a) ∷ []

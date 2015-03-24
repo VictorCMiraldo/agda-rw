@@ -1,6 +1,4 @@
-{-# OPTIONS --allow-unsolved-metas  #-}
 open import Prelude
-open import Data.Maybe using (Maybe; just; nothing)
 open import Reflection renaming (Term to AgTerm; Type to AgType)
 open import Data.String using (String)
 

@@ -1,7 +1,6 @@
 open import Prelude
 open import Level using (Level) renaming (zero to lz; suc to ls)
 open import Data.List.Properties as ListProps renaming (∷-injective to ∷-inj)
-open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String
 open import Data.Nat as Nat using (decTotalOrder; _≤_; s≤s; z≤n)
 open import Relation.Binary using (module DecTotalOrder)
@@ -16,39 +15,8 @@ module RW.Language.RTerm where
   postulate
     unsuportedSyntax : ∀{a}{A : Set a} → String → A
     error            : ∀{a}{A : Set a} → String → A
-  
-  -- Some minor boilerplate to solve equality problem...
-  record Eq (A : Set) : Set where
-    constructor eq
-    field cmp : (x y : A) → Dec (x ≡ y)
 
   open Eq {{...}}
-
-  instance
-    eq-ℕ : Eq ℕ
-    eq-ℕ = eq _≟-ℕ_
-
-    eq-Fin : ∀{n} → Eq (Fin n)
-    eq-Fin = eq _≟-Fin_
-
-    eq-Maybe : ∀{A} ⦃ eqA : Eq A ⦄ → Eq (Maybe A)
-    eq-Maybe = eq decide
-      where 
-        just-inj : ∀{a}{A : Set a}{x y : A}
-                 → _≡_ {a} {Maybe A} (just x) (just y) → x ≡ y
-        just-inj refl = refl
-  
-        decide : {A : Set} ⦃ eqA : Eq A ⦄
-               → (x y : Maybe A) → Dec (x ≡ y)
-        decide nothing nothing   = yes refl
-        decide nothing (just _)  = no (λ ())
-        decide (just _) nothing  = no (λ ())
-        decide ⦃ eq f ⦄ (just x) (just y) with f x y
-        ...| yes x≡y = yes (cong just x≡y)
-        ...| no  x≢y = no (x≢y ∘ just-inj)
-
-    eq-⊥ : Eq ⊥
-    eq-⊥ = eq (λ x → ⊥-elim x)
 
   -- We'll consider constructor and definitions
   -- as just names; we just need to know how to 
