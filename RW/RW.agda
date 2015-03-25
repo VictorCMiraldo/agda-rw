@@ -85,6 +85,14 @@ module RW.RW (db : TStratDB) where
   by : Name → List (Arg AgType) → AgTerm → AgTerm
   by act ctx goal = R2AgTerm ∘ p2 ∘ p2 $ (by' act ctx goal)
 
+  -- by+ is pretty much foldM (<|>) error (by ⋯),
+  -- where (<|>) is the usual alternative from Error Monad.
+  by+ : List Name → List (Arg AgType) → AgTerm → AgTerm
+  by+ [] _ _ = RW-error "No suitable action"
+  by+ (a ∷ as) ctx goal with runErr (make-RWData a goal ctx >>= RWerr a)
+  ...| i1 _ = by+ as ctx goal
+  ...| i2 t = R2AgTerm ∘ p2 ∘ p2 $ t
+
   join-tr : Name → List (RTerm ⊥) → RTerm ⊥
   join-tr _  []      = ivar 0
   join-tr tr (x ∷ l) = foldr (λ h r → rapp (rdef tr) (r ∷ h ∷ [])) x l
