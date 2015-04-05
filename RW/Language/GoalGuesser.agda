@@ -1,4 +1,5 @@
 open import Prelude
+open import Data.Nat using (_≤?_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Vec using (Vec; _∷_; [])
 
@@ -7,7 +8,7 @@ open import RW.Language.FinTerm
 open import RW.Language.RTermUtils
 open import RW.Utils.Monads
 
-module RW.Language.GoalGuesser where
+module RW.Language.GoalGuesser (maxH : ℕ) where
   
   open Monad {{...}}
 
@@ -64,7 +65,7 @@ module RW.Language.GoalGuesser where
   apply : {n : ℕ} → RTerm ⊥ → RBinApp (Fin n) → NonDet (RTerm ⊥)
   -- If we have no more variables to instantiate on our type,
   -- we can proceed to substitute.
-  apply {n = zero}  g (_ , ty1 , ty2) 
+  apply {n = zero} g (_ , ty1 , ty2) 
     = g [ Fin2RTerm⊥ ty1 , Fin2RTerm⊥ ty2 ]
 
   -- If not, we simply call with a recursively smaller n
@@ -89,10 +90,14 @@ module RW.Language.GoalGuesser where
       {-# TERMINATING #-}
       mk-inst-f : {n : ℕ} → RTerm ⊥ → NonDet (Fin (suc n) → RTerm (Fin n))
       mk-inst-f (ovar ())
-      mk-inst-f (ivar n)    = return (▵ (ivar n))
-      mk-inst-f (rlit l)    = return (▵ (rlit l))
-      mk-inst-f (rlam t)    = return (▵ (rlam t)) ++ mk-inst-f t
-      mk-inst-f (rapp n ts) = return (▵ (rapp n ts)) ++ concat (mapM mk-inst-f ts)
+      mk-inst-f (ivar n) = return (▵ (ivar n))
+      mk-inst-f (rlit l) = return (▵ (rlit l))
+      mk-inst-f (rlam t) with height (rlam t) ≤? maxH
+      ...| yes _ = return (▵ (rlam t)) ++ mk-inst-f t
+      ...| no  _ = mk-inst-f t
+      mk-inst-f (rapp n ts) with height (rapp n ts) ≤? maxH
+      ...| yes _ = return (▵ (rapp n ts)) ++ concat (mapM mk-inst-f ts)
+      ...| no  _ = concat (mapM mk-inst-f ts)
 
       -- Given a term t and a type with (n+1) variables, instantiate the last variable
       -- from the type with a non-deterministic subterm of t, returns the resulting type.

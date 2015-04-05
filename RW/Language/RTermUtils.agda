@@ -147,3 +147,22 @@ module RW.Language.RTermUtils where
   typeArity : ∀{a}{A : Set a} → RTerm A → ℕ
   typeArity (rapp impl (t1 ∷ t2 ∷ [])) = suc (typeArity t2)
   typeArity _                          = 0
+
+  -- Measures
+
+  {-# TERMINATING #-}
+  height : {A : Set} → RTerm A → ℕ
+  height (ovar _)    = 0
+  height (ivar _)    = 0
+  height (rlit _)    = 0
+  height (rlam t)    = 1 + height t
+  height (rapp _ ts) = 1 + max* (map height ts) 
+    where
+      max : ℕ → ℕ → ℕ
+      max a b with a ≤? b
+      ...| yes _ = b
+      ...| no  _ = a
+
+      max* : List ℕ → ℕ
+      max* [] = 0
+      max* (h ∷ t) = max h (max* t)

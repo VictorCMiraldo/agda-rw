@@ -5,7 +5,7 @@ open import Data.String using (String)
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
 open import RW.Language.FinTerm
-open import RW.Language.GoalGuesser
+open import RW.Language.GoalGuesser 1
 
 open import RW.Strategy
 
