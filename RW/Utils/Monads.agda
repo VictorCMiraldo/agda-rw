@@ -1,5 +1,5 @@
 open import Prelude
-open import Level using (Level; _⊔_) renaming (zero to lz; suc to ls)
+open import Level using (Level; _⊔_; Lift) renaming (zero to lz; suc to ls)
 open import Data.Maybe using (Maybe; nothing; just)
 
 module RW.Utils.Monads where
@@ -20,6 +20,22 @@ module RW.Utils.Monads where
        → (A → M B) → List A → M (List B)
   mapM f []       = return []
   mapM f (x ∷ la) = f x >>= (λ x' → mapM f la >>= return ∘ _∷_ x')
+
+  _>>_ : ∀{a}{M : Set a → Set a}{{ m : Monad M }}{A B : Set a}
+       → M A → M B → M B
+  f >> g = f >>= λ _ → g
+
+  -- Binds the side-effects of the second computation,
+  -- returning the value of the first.
+  _<>=_ : ∀{a}{M : Set a → Set a}{{ m : Monad M }}{A B : Set a}
+        → M A → (A → M B) → M A
+  f <>= x = f >>= λ r → x r >> return r
+
+  {-
+  _<$>_ : ∀{a}{A B : Set a}{M : Set a → Set a}{{ m : Monad M }}
+        → (A → B) → M A → M B
+  f <$> x = ?
+  -}
 
   -----------------
   -- Maybe Monad --
@@ -60,6 +76,29 @@ module RW.Utils.Monads where
                 }
       }
 
+  -- Universe Polymorphic version of the state monad.
+  record STₐ {a b}(s : Set a)(o : Set b) : Set (a ⊔ b) where
+    field run : s → (o × s)
+
+  evalSTₐ : ∀{a b}{s : Set a}{o : Set b} → STₐ s o → s → o
+  evalSTₐ s = p1 ∘ (STₐ.run s)
+
+  getₐ : ∀{a}{s : Set a} → STₐ s s
+  getₐ = record { run = λ s → (s , s) }
+
+  putₐ : ∀{a}{s : Set a} → s → STₐ s Unit
+  putₐ s = record { run = λ _ → (unit , s) }
+
+  instance
+    MonadStateₐ : ∀{a b}{s : Set a} → Monad {a ⊔ b} (STₐ s)
+    MonadStateₐ = record
+      { return = λ x → record { run = λ s → x , s }
+      ; _>>=_  = λ x f → record { run = 
+                 λ s → let y = STₐ.run x s
+                       in STₐ.run (f (p1 y)) (p2 y)
+                }
+      }
+
   -------------
   -- Fresh ℕ --
   -------------
@@ -69,6 +108,9 @@ module RW.Utils.Monads where
 
   runFresh : ∀{A} → Freshℕ A → A
   runFresh f = evalST f 0
+
+  runFresh-n : ∀{A} → Freshℕ A → ℕ → A
+  runFresh-n = evalST
 
   inc : Freshℕ Unit
   inc = get >>= (put ∘ suc)
@@ -91,4 +133,33 @@ module RW.Utils.Monads where
     MonadNonDet = record
       { return = NonDetRet
       ; _>>=_  = NonDetBind
+      }
+
+  ------------------
+  -- Reader Monad --
+  ------------------
+
+  Reader : ∀{a b} → Set a → Set b → Set (a ⊔ b)
+  Reader R A = R → A
+
+  reader-bind : ∀{a b}{R : Set a}{A B : Set b}
+              → Reader R A → (A → Reader R B) → Reader R B
+  reader-bind ra rb = λ r → rb (ra r) r
+
+  reader-return : ∀{a b}{R : Set a}{A : Set b}
+                → A → Reader R A
+  reader-return a = λ _ → a
+
+  reader-local : ∀{a b}{R : Set a}{A : Set b}
+               → (R → R) → Reader R A → Reader R A
+  reader-local f ra = ra ∘ f
+
+  reader-ask : ∀{a}{R : Set a} → Reader R R
+  reader-ask = id
+
+  instance
+    MonadReader : ∀{a b}{R : Set a} → Monad {b ⊔ a} (Reader {b = b ⊔ a} R)
+    MonadReader = record
+      { return = reader-return
+      ; _>>=_  = reader-bind
       }

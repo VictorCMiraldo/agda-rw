@@ -26,11 +26,11 @@ module Prelude where
 
   open import Data.Nat 
     using (ℕ; suc; zero; _+_; _*_; _∸_)
-    renaming (_≟_ to _≟-ℕ_) 
+    renaming (_≟_ to _≟-ℕ_; _≤?_ to _≤?-ℕ_) 
     public
                                           
   open import Data.Fin 
-    using (Fin; fromℕ; toℕ)
+    using (Fin; fromℕ; fromℕ≤; toℕ)
     renaming (zero to fz; suc to fs)
     public
 
@@ -41,7 +41,7 @@ module Prelude where
 
   open import Data.List 
     using (List; _∷_; []; map; _++_; zip; filter;
-           all; any; concat; foldr; reverse)
+           all; any; concat; foldr; reverse; length)
     public
 
   open import Data.Product
@@ -71,6 +71,7 @@ module Prelude where
 
   open import Data.Maybe 
     using (Maybe; just; nothing)
+    renaming (maybe′ to maybe)
     public
 
   isTrue : ∀{a}{A : Set a} → Dec A → Bool
@@ -91,15 +92,37 @@ module Prelude where
 
   open Eq {{...}}
 
+  record Enum (A : Set) : Set where
+    constructor enum
+    field
+      toEnum   : A → Maybe ℕ
+      fromEnum : ℕ → Maybe A
+
+  open Enum {{...}}
+
   instance
     eq-ℕ : Eq ℕ
     eq-ℕ = eq _≟-ℕ_
 
+    enum-ℕ : Enum ℕ
+    enum-ℕ = enum just just
+
     eq-Fin : ∀{n} → Eq (Fin n)
     eq-Fin = eq _≟-Fin_
 
+    enum-Fin : ∀{n} → Enum (Fin n)
+    enum-Fin {n} = enum (λ x → just (toℕ x)) fromℕ-partial
+      where
+        fromℕ-partial : ℕ → Maybe (Fin n)
+        fromℕ-partial m with suc m ≤?-ℕ n
+        ...| yes prf = just (fromℕ≤ {m} {n} prf)
+        ...| no  _   = nothing
+
     eq-⊥ : Eq ⊥
     eq-⊥ = eq (λ x → ⊥-elim x)
+
+    enum-⊥ : Enum ⊥
+    enum-⊥ = enum ⊥-elim (const nothing)
 
     eq-Maybe : ∀{A} ⦃ eqA : Eq A ⦄ → Eq (Maybe A)
     eq-Maybe = eq decide
@@ -116,3 +139,6 @@ module Prelude where
         decide ⦃ eq f ⦄ (just x) (just y) with f x y
         ...| yes x≡y = yes (cong just x≡y)
         ...| no  x≢y = no (x≢y ∘ just-inj)
+
+    enum-Maybe : ∀{A} ⦃ enA : Enum A ⦄ → Enum (Maybe A)
+    enum-Maybe ⦃ enum aℕ ℕa ⦄ = enum (maybe aℕ nothing) (just ∘ ℕa)

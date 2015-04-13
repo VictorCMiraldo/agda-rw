@@ -1,7 +1,7 @@
 {-# OPTIONS --allow-unsolved-metas  #-}
 open import Prelude
 open import Data.Nat using (_≤?_)
-open import Data.Maybe using (Maybe; just; nothing; is-just) renaming (maybe′ to maybe)
+open import Data.Maybe using (Maybe; just; nothing; is-just)
 open import Reflection using (_≟-Lit_; _≟-Name_)
 
 open import RW.Language.RTerm

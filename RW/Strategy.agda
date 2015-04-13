@@ -1,5 +1,5 @@
 open import Prelude
-open import Data.Maybe using (Maybe; just; nothing) renaming (maybe′ to maybe)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String renaming (_++_ to _++s_)
 
 open import RW.Language.RTerm
