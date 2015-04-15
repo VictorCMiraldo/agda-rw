@@ -70,7 +70,7 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
   applyBRule r = reader-ask >>= return ∘ (Prelude.map (applyBRule1 r))
   
   ruleList : List (BRule t c) → L (List Lst)
-  ruleList rs = mapM applyBRule rs >>= return ∘ prune ∘ concat
+  ruleList rs = mapM applyBRule rs >>= return ∘ concat
     where
       isNothing : ∀{a}{A : Set a} → Maybe A → Bool
       isNothing nothing = true
