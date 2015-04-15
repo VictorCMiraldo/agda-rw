@@ -72,7 +72,7 @@ module RW.Language.RTermTrie where
   ...| no  x≢y = no (x≢y ∘ rappᵢ-inj)
 
   instance
-  {-
+  
     RTerm-isTrie : {A : Set}{{eqA : Eq A}}{{enA : Enum A}} 
                  → IsTrie (RTerm A)
     RTerm-isTrie {A} {{enA = enum aℕ ℕa}} = record
@@ -84,6 +84,9 @@ module RW.Language.RTermTrie where
       ; outₜ    = outAux
       }
       where
+        postulate
+          fixme : ∀{a}{A : Set a} → A
+
         toSymAux : RTermᵢ A → Maybe ℕ
         toSymAux (ovarᵢ n) = aℕ n
         toSymAux _         = nothing
@@ -105,7 +108,7 @@ module RW.Language.RTermTrie where
         outAux (rlit l) = rlitᵢ l , []
         outAux (rlam t) = rlamᵢ , t ∷ []
         outAux (rapp n ts) = rappᵢ n , ts
-  -}
+  {-
     RTerm-isTrie : IsTrie (RTerm ⊥)
     RTerm-isTrie = record
       { Idx   = RTermᵢ ⊥
@@ -140,23 +143,19 @@ module RW.Language.RTermTrie where
         outAux (rlit l) = rlitᵢ l , []
         outAux (rlam t) = rlamᵢ , t ∷ []
         outAux (rapp n ts) = rappᵢ n , ts
+  -}
 
-  {-
   RTermTrie : (A : Set){{eqA : Eq A}}{{enA : Enum A}} → Set
   RTermTrie A = BTrie (RTerm A) Name
-  -} 
 
-  RTermTrie : Set
-  RTermTrie = BTrie (RTerm ⊥) Name
-
-  insertTerm : -- {A : Set}{{eqA : Eq A}}{{enA : Enum A}} 
-              Name → RTerm ⊥ → ℕ × RTermTrie → ℕ × RTermTrie
-  insertTerm = insert
+  insertTerm : {A : Set}{{eqA : Eq A}}{{enA : Enum A}} 
+             → Name → RTerm A → ℕ × RTermTrie A → ℕ × RTermTrie A
+  insertTerm {A} = insert
     where
-      open import RW.Data.BTrie.Insert (RTerm ⊥) Name
+      open import RW.Data.BTrie.Insert (RTerm A) Name
 
-  lookupTerm : -- {A : Set}{{eqA : Eq A}}{{enA : Enum A}}
-               RTerm ⊥ → RTermTrie → List (ℕmap.to (RTerm ⊥) × Name)
-  lookupTerm = lookup
+  lookupTerm : {A : Set}{{eqA : Eq A}}{{enA : Enum A}}
+             → RTerm ⊥ → RTermTrie A → List (ℕmap.to (RTerm A) × Name)
+  lookupTerm {A} t = lookup (replace-A ⊥-elim t)
     where
-      open import RW.Data.BTrie.Lookup (RTerm ⊥) Name
+      open import RW.Data.BTrie.Lookup (RTerm A) Name
