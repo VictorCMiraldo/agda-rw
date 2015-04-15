@@ -42,6 +42,6 @@ module RW.Data.BTrie where
 
   BTrieEmpty : {t c : Set}{{pT : IsTrie t}}
              → BTrie t c
-  BTrieEmpty {{pT}} = Fork $ [] -- ( empty , [] ) ∷ []
+  BTrieEmpty {{pT}} = Fork $ []
     where 
       open import RW.Data.PMap (IsTrie.Idx pT) {{IsTrie.idx≡ pT}}

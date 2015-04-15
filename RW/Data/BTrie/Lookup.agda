@@ -70,7 +70,14 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
   applyBRule r = reader-ask >>= return ∘ (Prelude.map (applyBRule1 r))
   
   ruleList : List (BRule t c) → L (List Lst)
-  ruleList rs = mapM applyBRule rs >>= return ∘ concat
+  ruleList rs = mapM applyBRule rs >>= return ∘ prune ∘ concat
+    where
+      isNothing : ∀{a}{A : Set a} → Maybe A → Bool
+      isNothing nothing = true
+      isNothing _       = false
+
+      prune : List Lst → List Lst
+      prune = Prelude.filter (isNothing ∘ p2)
 
   ------------------------------
   -- Actual Lookup
@@ -108,7 +115,7 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
     {-# TERMINATING #-}
     lkup-list : List (t × Imap.to (BTrie t c) × List (ℕ × List (BRule t c)))
               → L (List Lst)
-    lkup-list [] = reader-ask
+    lkup-list [] = return []
     lkup-list ((t , mh , bs) ∷ ts) 
       = lkup-aux t (Fork ((mh , bs) ∷ []))
       >>= λ s₁ → (reader-local (_++_ s₁) $ lkup-list ts)
