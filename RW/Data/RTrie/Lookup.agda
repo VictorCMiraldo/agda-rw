@@ -5,9 +5,9 @@ open import Data.String using (String)
 open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Nat using (_≤_)
 
-open import RW.Data.BTrie
+open import RW.Data.RTrie.Decl
 
-module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
+module RW.Data.RTrie.Lookup
     where
 
   postulate 
@@ -15,30 +15,27 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
   
   open import RW.Utils.Monads
   open Monad {{...}}
-  open IsTrie {{...}}
   open Eq {{...}}
 
-  open import RW.Data.PMap (IsTrie.Idx pT) {{IsTrie.idx≡ pT}} 
-    as Imap hiding (insert)
-  open import RW.Data.PMap ℕ 
-    as ℕmap hiding (insert)
+  import RW.Data.PMap (RTermᵢ ⊥) as IdxMap
+  import RW.Data.PMap ℕ as ℕmap
 
   -------------------------------
   -- Some type boilerplate
 
-  Label : Set → Set
-  Label a = ℕ ⊎ a
+  Label : Set
+  Label = ℕ ⊎ Name
 
   Lst : Set
-  Lst = ℕmap.to t × Maybe (Label c)
+  Lst = ℕmap.to (RTerm ⊥) × Maybe Label
 
   Lst-empty : Lst
   Lst-empty = ℕmap.empty , nothing
 
-  Lst-open : Lst → (ℕmap.to t × Maybe c)
+  Lst-open : Lst → (ℕmap.to (RTerm ⊥) × Maybe Name)
   Lst-open (e , l) = (e , lbl-join l)
     where
-      lbl-join : Maybe (Label c) → Maybe c
+      lbl-join : Maybe Label → Maybe Name
       lbl-join nothing = nothing
       lbl-join (just (i1 _)) = nothing
       lbl-join (just (i2 a)) = just a
@@ -52,7 +49,7 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
   ----------------------------
   -- Rule application
 
-  applyBRule1 : BRule t c → Lst → Lst
+  applyBRule1 : Rule → Lst → Lst
   applyBRule1 (Gr x)   (e , _) = e , just (i1 x)
   applyBRule1 (Tr x y) (e , just (i1 l)) 
     with x ≟-ℕ l
@@ -66,10 +63,10 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
   applyBRule1 (Fr _ _) (e , just (i2 _)) = e , nothing
   applyBRule1 _        (e , nothing) = e , nothing
 
-  applyBRule : BRule t c → L (List Lst)
+  applyBRule : Rule → L (List Lst)
   applyBRule r = reader-ask >>= return ∘ (Prelude.map (applyBRule1 r))
   
-  ruleList : List (BRule t c) → L (List Lst)
+  ruleList : List Rule → L (List Lst)
   ruleList rs = mapM applyBRule rs >>= return ∘ concat
     where
       isNothing : ∀{a}{A : Set a} → Maybe A → Bool
@@ -90,56 +87,57 @@ module RW.Data.BTrie.Lookup (t c : Set){{pT : IsTrie t}}{{eqT : Eq t}}
       ite false _ e = e
 
   mutual
-    lkup-inst1 : t → ℕ × List (BRule t c) → L (List Lst)
+    lkup-inst1 : RTerm ⊥ → ℕ × List Rule → L (List Lst)
     lkup-inst1 k (s , r) 
       = ruleList r 
       >>= return ∘ map-filter (isValid s k) (addUnbound s k)
       where
-        addUnbound : ℕ → t → Lst → Lst
+        addUnbound : ℕ → RTerm ⊥ → Lst → Lst
         addUnbound s k (e , l) = (ℕmap.alter (maybe just (just k)) s e , l)
 
         toBool : ∀{a}{A : Set a} → Dec A → Bool
         toBool (yes _) = true
         toBool (no  _) = false
 
-        isValid : ℕ → t → Lst → Bool
-        isValid s k (e , l) = toBool (ℕmap.lkup s e ≟ just k)
+        isValid : ℕ → RTerm ⊥ → Lst → Bool
+        isValid s k (e , l) = toBool (ℕmap.lkup s e ≟2 just k)
           where
-            _≟_ : (a₁ a₂ : Maybe t) → Dec (a₁ ≡ a₂)
-            _≟_ a b = Eq.cmp eq-Maybe a b
+            _≟2_ : (a₁ a₂ : Maybe (RTerm ⊥)) → Dec (a₁ ≡ a₂)
+            _≟2_ a b = Eq.cmp eq-Maybe a b
             
-    lkup-inst : t → List (ℕ × List (BRule t c)) → L (List Lst)
+    lkup-inst : RTerm ⊥ → List (ℕ × List Rule) → L (List Lst)
     lkup-inst t [] = return []
     lkup-inst t rs = mapM (lkup-inst1 t) rs >>= return ∘ concat 
 
     {-# TERMINATING #-}
-    lkup-list : List (t × Imap.to (BTrie t c) × List (ℕ × List (BRule t c)))
+    lkup-list : List (RTerm ⊥ × Cell)
               → L (List Lst)
     lkup-list [] = return []
-    lkup-list ((t , mh , bs) ∷ ts) 
-      = lkup-aux t (Fork ((mh , bs) ∷ []))
+    lkup-list ((t , (d , mh) , bs) ∷ ts) 
+      = lkup-aux t (Fork (((d , mh) , bs) ∷ []))
       >>= λ s₁ → (reader-local (_++_ s₁) $ lkup-list ts)
       >>= return ∘ (_++_ s₁)
 
-    lkup-aux : t → BTrie t c → L (List Lst)
-    lkup-aux _ (Leaf _) = return []
-    lkup-aux k (Fork ((rs , bs) ∷ [])) 
-      = let tid , tr = outₜ k
+    lkup-aux : RTerm ⊥ → RTrie → L (List Lst)
+    lkup-aux _ (Leaf r) = ruleList r
+    lkup-aux k (Fork (((d , rs) , bs) ∷ [])) 
+      = let tid , tr = out k
       in lkup-inst k bs
-      >>= λ r₁ → maybe (lkup≡just tr) (return []) (Imap.lkup tid rs)
-      >>= return ∘ (_++_ r₁)
+      >>= λ r₁ → lkup-aux k d
+      >>= λ r₂ → maybe (lkup≡just tr) (return []) (IdxMap.lkup tid rs)
+      >>= return ∘ (_++_ (r₁ ++ r₂))
       where
-        lkup≡just : List t → BTrie t c → L (List Lst)
+        lkup≡just : List (RTerm ⊥) → RTrie → L (List Lst)
         lkup≡just [] (Leaf r) = ruleList r
         lkup≡just _  (Leaf _) = return []
         lkup≡just tr (Fork ms) = lkup-list (zip tr ms)
 
     lkup-aux _ _ = trie-err "lkup-aux takes 1-cell forks"
 
-  lookup : t → BTrie t c → List (ℕmap.to t × c)
+  lookup : RTerm ⊥ → RTrie → List (ℕmap.to (RTerm ⊥) × Name)
   lookup t bt = accept (Prelude.map Lst-open (lkup-aux t bt (Lst-empty ∷ [])))
     where
-      accept : ∀{a}{A : Set a} → List (A × Maybe c) → List (A × c)
+      accept : ∀{a}{A : Set a} → List (A × Maybe Name) → List (A × Name)
       accept [] = []
       accept ((a , just b) ∷ hs) = (a , b) ∷ accept hs
       accept (_ ∷ hs)            = accept hs

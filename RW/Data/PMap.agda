@@ -17,6 +17,17 @@ module RW.Data.PMap (A : Set){{eqA : Eq A}} where
   to_ : ∀{b} → Set b → Set b
   to B = List (A × B)
 
+  to_default : ∀{b} → Set b → Set b
+  to B default = B × List (A × B)
+
+  onDef : ∀{b c}{B : Set b}{C : Set c}
+        → (m : to B → C) → to B default → C
+  onDef f (_ , m) = f m
+
+  onDef' : ∀{b}{B : Set b}
+         → (m : to B → to B) → to B default → to B default
+  onDef' f (def , m) = def , f m
+
   empty : ∀{b}{B : Set b}
         → to B
   empty = []
@@ -48,6 +59,10 @@ module RW.Data.PMap (A : Set){{eqA : Eq A}} where
     with k ≟ h
   ...| yes _ = just r
   ...| no  _ = lkup k ts
+
+  -- Look up in a map with a default value
+  lkupDef : ∀{b}{B : Set b} → A → to B default → B
+  lkupDef a (b , m) = maybe id b (lkup a m)
 
   -- Total version
   lkup' : ∀{b}{B : Set b}

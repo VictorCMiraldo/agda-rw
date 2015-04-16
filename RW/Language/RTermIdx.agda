@@ -2,15 +2,9 @@ open import Prelude
 open import RW.Language.RTerm
 open import RW.Language.FinTerm
 
-module RW.Language.RTermTrie where
+module RW.Language.RTermIdx where
 
-  open import RW.Data.BTrie
-  
   open Eq {{...}}
-  open IsTrie {{...}}
-
-  open import RW.Data.PMap ℕ 
-    as ℕmap hiding (insert)
 
   data RTermᵢ {a}(A : Set a) : Set a where
     ovarᵢ : (x : A) → RTermᵢ A
@@ -71,6 +65,34 @@ module RW.Language.RTermTrie where
   ...| yes x≡y = yes (cong rappᵢ x≡y)
   ...| no  x≢y = no (x≢y ∘ rappᵢ-inj)
 
+  -----------------------------------
+  -- Utilities
+
+  out : ∀{a}{A : Set a} → RTerm A → RTermᵢ A × List (RTerm A)
+  out (ovar x)    = ovarᵢ x , []
+  out (ivar n)    = ivarᵢ n , []
+  out (rlit l)    = rlitᵢ l , []
+  out (rlam t)    = rlamᵢ , t ∷ []
+  out (rapp n ts) = rappᵢ n , ts
+
+  toSymbol : ∀{a}{A : Set a} → RTermᵢ A → Maybe A
+  toSymbol (ovarᵢ a) = just a
+  toSymbol _         = nothing
+
+  idx-cast : ∀{a b}{A : Set a}{B : Set b} 
+           → (i : RTermᵢ A) → (toSymbol i ≡ nothing)
+           → RTermᵢ B
+  idx-cast (ovarᵢ x) ()
+  idx-cast (ivarᵢ n) _ = ivarᵢ n
+  idx-cast (rlitᵢ l) _ = rlitᵢ l
+  idx-cast (rlamᵢ  ) _ = rlamᵢ
+  idx-cast (rappᵢ n) _ = rappᵢ n
+
+  instance
+    eq-RTermᵢ : {A : Set}{{eqA : Eq A}} → Eq (RTermᵢ A)
+    eq-RTermᵢ = eq _≟-RTermᵢ_
+
+  {-
   instance
   
     RTerm-isTrie : {A : Set}{{eqA : Eq A}}{{enA : Enum A}} 
@@ -159,3 +181,5 @@ module RW.Language.RTermTrie where
   lookupTerm {A} t = lookup (replace-A ⊥-elim t)
     where
       open import RW.Data.BTrie.Lookup (RTerm A) Name
+
+  -}
