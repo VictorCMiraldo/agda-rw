@@ -13,7 +13,7 @@ module RW.Data.RTrie.Decl where
     
   mutual
     Cell : Set
-    Cell = to RTrie default     -- Map from indexes to tries,
+    Cell = IdxMap.to RTrie default     -- Map from indexes to tries,
          × List (ℕ × List Rule) -- Binding symbols,
 
     data RTrie : Set where

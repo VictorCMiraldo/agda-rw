@@ -123,9 +123,8 @@ module RW.Data.RTrie.Lookup
     lkup-aux k (Fork (((d , rs) , bs) ∷ [])) 
       = let tid , tr = out k
       in lkup-inst k bs
-      >>= λ r₁ → lkup-aux k d
-      >>= λ r₂ → maybe (lkup≡just tr) (return []) (IdxMap.lkup tid rs)
-      >>= return ∘ (_++_ (r₁ ++ r₂))
+      >>= λ r → maybe (lkup≡just tr) (lkup-aux k d) (IdxMap.lkup tid rs)
+      >>= return ∘ (_++_ r)
       where
         lkup≡just : List (RTerm ⊥) → RTrie → L (List Lst)
         lkup≡just [] (Leaf r) = ruleList r

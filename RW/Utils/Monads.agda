@@ -41,6 +41,11 @@ module RW.Utils.Monads where
   -- Maybe Monad --
   -----------------
 
+  _<$>+1_ : ∀{a}{A B : Set a} → (A → B) → Maybe A → Maybe B
+  f <$>+1 x with x
+  ...| nothing = nothing
+  ...| just x' = just (f x')
+
   instance
     MonadMaybe : ∀{a} → Monad {a} Maybe
     MonadMaybe = record
