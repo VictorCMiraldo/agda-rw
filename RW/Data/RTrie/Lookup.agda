@@ -49,6 +49,7 @@ module RW.Data.RTrie.Lookup
   ----------------------------
   -- Rule application
 
+  -- Note how a mismatch erases labels!
   applyBRule1 : Rule → Lst → Lst
   applyBRule1 (Gr x)   (e , _) = e , just (i1 x)
   applyBRule1 (Tr x y) (e , just (i1 l)) 
@@ -87,6 +88,7 @@ module RW.Data.RTrie.Lookup
       ite false _ e = e
 
   mutual
+    -- TODO: refine this, only apply the rules after validating and adding bindings.
     lkup-inst1 : RTerm ⊥ → ℕ × List Rule → L (List Lst)
     lkup-inst1 k (s , r) 
       = ruleList r 
@@ -104,11 +106,14 @@ module RW.Data.RTrie.Lookup
           where
             _≟2_ : (a₁ a₂ : Maybe (RTerm ⊥)) → Dec (a₁ ≡ a₂)
             _≟2_ a b = Eq.cmp eq-Maybe a b
-            
+     
+    -- Looks up a term given a list of instantiations.
+    -- This is not, by far, a lookup function. We're just adding all possibilities together.
     lkup-inst : RTerm ⊥ → List (ℕ × List Rule) → L (List Lst)
     lkup-inst t [] = return []
     lkup-inst t rs = mapM (lkup-inst1 t) rs >>= return ∘ concat 
 
+    -- Looks a list of RTerms in their respecive cells.
     {-# TERMINATING #-}
     lkup-list : List (RTerm ⊥ × Cell)
               → L (List Lst)
@@ -123,6 +128,8 @@ module RW.Data.RTrie.Lookup
     lkup-aux k (Fork (((d , rs) , bs) ∷ [])) 
       = let tid , tr = out k
       in lkup-inst k bs
+      -- If tid ∉ mh, we run the lookup again, but in the default branch.
+      -- Otherwise, we run a lkup-list.
       >>= λ r → maybe (lkup≡just tr) (lkup-aux k d) (IdxMap.lkup tid rs)
       >>= return ∘ (_++_ r)
       where
@@ -133,6 +140,7 @@ module RW.Data.RTrie.Lookup
 
     lkup-aux _ _ = trie-err "lkup-aux takes 1-cell forks"
 
+  -- Interfacing
   lookup : RTerm ⊥ → RTrie → List (ℕmap.to (RTerm ⊥) × Name)
   lookup t bt = accept (Prelude.map Lst-open (lkup-aux t bt (Lst-empty ∷ [])))
     where

@@ -96,12 +96,16 @@ module RW.Data.RTrie.Insert
   --  finish modifying the mentioned trie.
   mIdx : Cell → RTermᵢ ⊥ 
        → I (CellCtx × RTrie)
+  -- In the case we are inserting a ivarᵢ, we are going to merge the new btrie,
+  -- which is going to be a leaf (TODO: why?), in the default branch.
   mIdx ((d , mh) , bs) (ivarᵢ _)
     = return $ (λ bt → (merge d bt , mh) , bs) , BTrieEmpty
     where
       merge : RTrie → RTrie → RTrie
       merge (Leaf as) (Leaf bs) = Leaf (as ++ bs)
       merge _ bt                = bt 
+  -- For the more general case, if tid ∉ mh, we add and entry (tid ↦ empty).
+  -- After, we return mh(tid) and the context that modifies this exact entry.
   mIdx ((d , mh) , bs) tid
     = let mh′ , prf = IdxMap.alterPrf BTrieEmpty tid mh
     in return $ (λ f → (d , IdxMap.insert tid f mh) , bs) 
@@ -138,6 +142,7 @@ module RW.Data.RTrie.Insert
     insCell* (t ∷ ts) (b ∷ bs)
       = insCell (out t) b >>= λ b′ → (_∷_ b′) <$> insCell* ts bs
 
+    -- Variation of insCell*, assuming we're always adding to empty cells.
     insCell*ε : {A : Set}{{enA : Enum A}} → List (RTerm A) → I (List Cell)
     insCell*ε [] = return []
     insCell*ε (t ∷ ts) 
@@ -151,6 +156,8 @@ module RW.Data.RTrie.Insert
       = 𝑴 cell tid
       >>= λ { (c , bt) → insCellAux tid tr bt >>= return ∘ c }
       where
+        -- Note how if tid is a binding symbol, we don't do anything. That's
+        -- because 𝑴 already took care of adding the rules in the correct place for us.
         tr≡[] : {A : Set}{{enA : Enum A}} 
               → RTermᵢ A → I RTrie
         tr≡[] tid with toSymbol tid
@@ -160,14 +167,19 @@ module RW.Data.RTrie.Insert
         insCellAux : {A : Set}{{enA : Enum A}} 
                    → RTermᵢ A → List (RTerm A) → RTrie 
                    → I RTrie
+        -- Inserting in a Leaf is impossible...
         insCellAux tid _  (Leaf r) = return (Leaf r)
+        -- If we don't have recursive arguments in the term beeing inserted, 
+        -- we follow by tr≡[]
         insCellAux tid [] _        = tr≡[] tid
+        -- Otherwise we simply add our recursive arguments.
         insCellAux tid tr (Fork []) 
           = Fork <$> insCell*ε tr
         insCellAux tid tr (Fork ms)
           = Fork <$> insCell* tr ms
           
   -- |Insertion has to begin in a 1-cell fork.
+  --  This gives some intuition that BTries should contain an arity, somewhere in their type.
   ins : {A : Set}{{enA : Enum A}} → RTerm A → RTrie → I RTrie
   ins t (Fork (cell ∷ []))
     = (Fork ∘ singleton) <$> insCell (out t) cell
@@ -175,6 +187,7 @@ module RW.Data.RTrie.Insert
     = (Fork ∘ singleton) <$> insCell (out t) ((Leaf [] , IdxMap.empty) , [])
   ins t _ = trie-err "Insertion has to begin in a 1-cell fork"
 
+  -- Interfacing
   {-# TERMINATING #-}
   insertTerm : {A : Set}{{enA : Enum A}} → Name → RTerm A → (ℕ × RTrie) → (ℕ × RTrie)
   insertTerm d term (n , Leaf r) = trie-err "Can't insert in a leaf"
@@ -184,6 +197,8 @@ module RW.Data.RTrie.Insert
                 (trie-err "empty final lbl")  lbl
     where
       open import Data.Maybe using (maybe′)
+
+      -- Substitution boilerplate.
 
       sR : ℕ → Name → Rule → Rule
       sR k c (Tr m n) with n ≟-ℕ k
