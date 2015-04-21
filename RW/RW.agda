@@ -16,6 +16,10 @@ module RW.RW (db : TStratDB) where
   open Monad {{...}}
   open IsError {{...}}
 
+  ------------------
+  -- Housekeeping --
+  ------------------
+
   -- We need to bring our instances into scope explicitely,
   -- to make Agda happy.
   private
@@ -75,6 +79,11 @@ module RW.RW (db : TStratDB) where
   RWerr-less : Name → RWData → Err StratErr (RTerm ⊥)
   RWerr-less act d = RWerr act d >>= return ∘ p2 ∘ p2
 
+  ----------------
+  -- By Tactics --
+  ----------------
+
+  -- Standard debugging version.
   by' : Name → List (Arg AgType) → AgTerm → (RWData × UData × RTerm ⊥)
   by' act ctx goal with runErr (make-RWData act goal ctx >>= RWerr act)
   ...| i1 err  = RW-error err
@@ -85,6 +94,7 @@ module RW.RW (db : TStratDB) where
   by : Name → List (Arg AgType) → AgTerm → AgTerm
   by act ctx goal = R2AgTerm ∘ p2 ∘ p2 $ (by' act ctx goal)
 
+  -- Handling multiple actions, naive way.
   -- by+ is pretty much foldM (<|>) error (by ⋯),
   -- where (<|>) is the usual alternative from Error Monad.
   by+ : List Name → List (Arg AgType) → AgTerm → AgTerm
@@ -97,6 +107,7 @@ module RW.RW (db : TStratDB) where
   join-tr _  []      = ivar 0
   join-tr tr (x ∷ l) = foldr (λ h r → rapp (rdef tr) (r ∷ h ∷ [])) x l
 
+  -- Handling multiple goals.
   by*-err : Name → List Name → List (Arg AgType) → AgTerm → Err StratErr AgTerm
   by*-err tr acts ctx goal 
     =   make-RWData* acts goal ctx 
@@ -115,3 +126,47 @@ module RW.RW (db : TStratDB) where
   by* tr acts ctx goal with runErr (by*-err tr acts ctx goal)
   ...| i1 err = RW-error err
   ...| i2 res = res
+
+  ------------------------------
+  -- Adding Tries to the cake --
+  ------------------------------
+
+  open import RW.Data.RTrie
+
+  module Auto 
+    (bt    : RTrie)                 -- which trie to use,
+    (newHd : RTermName → RTermName) -- given the goal head, how to build the head for the action.
+    where
+
+    open import RW.Language.RTermTrie
+
+    our-strategy : RTermName → Name → UData → Err StratErr (RTerm ⊥)
+    our-strategy goal 
+      = maybe 
+        TStrat.how 
+        (const $ const $ i1 no-strat) 
+      $ filter-db db
+      where
+        no-strat : StratErr
+        no-strat = NoTStrat goal (newHd goal)
+
+        filter-db : TStratDB → Maybe TStrat
+        filter-db [] = nothing
+        filter-db (s ∷ ss) with TStrat.when s goal (newHd goal)
+        ...| false = filter-db ss
+        ...| true  = just s
+
+    auto-internal : List (Arg AgType) → AgTerm → Err StratErr AgTerm
+    auto-internal _ goal with forceBinary $ Ag2RTerm goal
+    ...| nothing = i1 $ Custom "non-binary goal"
+    ...| just (hd , g₁ , g₂)
+      = let
+        options = search-action (newHd hd) (hd , g₁ , g₂) bt
+        strat   = uncurry $ our-strategy hd
+        err     = Custom "No option was succesful"
+      in try-all strat err options >>= return ∘ R2AgTerm
+    
+    auto : List (Arg AgType) → AgTerm → AgTerm
+    auto ctx goal with runErr (auto-internal ctx goal)
+    ...| i1 err = RW-error err
+    ...| i2 r   = r

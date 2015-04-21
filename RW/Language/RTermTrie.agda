@@ -25,32 +25,29 @@ module RW.Language.RTermTrie where
   ...| nothing  = nothing
 
   postulate
-    non-binary-goal : UData × Name
-    not-found       : UData × Name
-    ul-is-nothing   : UData × Name
+    not-found       : Name × UData
+    ul-is-nothing   : Name × UData
 
-  search-action : RTermName → AgTerm → RTrie → List (UData × Name)
-  search-action hd ag trie with (forceBinary $ Ag2RTerm ag)
-  ...| nothing = non-binary-goal ∷ []
-  ...| just (_ , g₁ , g₂)
+  search-action : RTermName → RBinApp ⊥ → RTrie → List (Name × UData)
+  search-action hd (_ , g₁ , g₂) trie 
     = let g□ = g₁ ∩↑ g₂
           u₁ = g□ -↓ g₁
           u₂ = g□ -↓ g₂
           ul = replicateM (u₁ ∷ u₂ ∷ [])
     in maybe (mkSearch g□) (ul-is-nothing ∷ []) ul
     where
-      convert : RTerm (Maybe ⊥) → List (ℕ × RTerm ⊥) × Name → UData × Name
-      convert g□ (ns , act) = u-data (⊥2UnitCast g□) ns [] , act
+      convert : RTerm (Maybe ⊥) → List (ℕ × RTerm ⊥) × Name → Name × UData
+      convert g□ (ns , act) = act , u-data (⊥2UnitCast g□) ns []
 
-      convert-sym : RTerm (Maybe ⊥) → List (ℕ × RTerm ⊥) × Name → UData × Name
-      convert-sym g□ (ns , act) = u-data (⊥2UnitCast g□) ns (Symmetry ∷ []) , act
+      convert-sym : RTerm (Maybe ⊥) → List (ℕ × RTerm ⊥) × Name → Name × UData
+      convert-sym g□ (ns , act) = act , u-data (⊥2UnitCast g□) ns (Symmetry ∷ [])
 
       mkLkup : List (RTerm ⊥) → Maybe (List (List (ℕ × RTerm ⊥) × Name))
       mkLkup ul with lookupTerm (rapp hd ul) trie
       ...| [] = nothing
       ...| l  = just l
 
-      mkSearch : RTerm (Maybe ⊥) → List (RTerm ⊥) → List (UData × Name)
+      mkSearch : RTerm (Maybe ⊥) → List (RTerm ⊥) → List (Name × UData)
       mkSearch g□ ul with mkLkup ul
       ...| just l = map (convert g□) l
       ...| nothing with mkLkup (reverse ul)

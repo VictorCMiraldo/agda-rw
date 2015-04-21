@@ -107,6 +107,13 @@ module RW.Strategy where
   ...| i1 _ = g a
   ...| i2b  = i2b
 
+  try-all : ∀{a b}{A : Set a}{B E : Set b} ⦃ isErr : IsError E ⦄
+          → (A → Err E B) → E → List A → Err E B
+  try-all f e [] = i1 e
+  try-all f e (a ∷ as) with f a
+  ...| i1 _ = try-all f e as
+  ...| i2 r = return r
+
   -- Basic unification
   -- TODO: how to take care of symmetry for the case where action receives zero arguments?
   basic : RWData → Err StratErr UData
