@@ -114,7 +114,7 @@ We could prove the twiceIsEven lemma in the following manner:
 First we open the `Auto` module, which is inside `RW.RW`. It takes two parameters. First
 the term database, and the later a function manipulating `RTermName`s, which will receive
 the relation which is the goal's head and should return the relation we need to use to build
-the search term. In our case, we are only searching for relational equality[^1].
+the search term. In our case, we are only searching for relational equality.[^1]
 
     open Auto myTrie (λ _ → (rdef $ quote _≡r_))
 
@@ -135,7 +135,7 @@ the search term. In our case, we are only searching for relational equality[^1].
       ∎
 
 [^1]: This opens up an interesting future work option. We could allow that function to
-return a list of names, and search them all!
+      return a list of names, and search them all!
 
 Using *RW*
 ==========
