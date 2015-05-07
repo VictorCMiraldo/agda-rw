@@ -85,6 +85,57 @@ Another example, with a better runtime, follows.
 The only difference between `by*-≡` and `by*-≡r` is the transitivity they use. Although
 slow, in general, both snippets typecheck.
 
+The *auto* tactic
+-----------------
+
+We also provide an automatic tactic, that will try to figure out which term to use to prove
+the given goal, given a term database. This database is defined using a Term Trie (We will
+skip its explanation for it is a lengthy one, we forward the interested reader to [this](https://github.com/VictorCMiraldo/msc-agda-tactics/tree/master/Thesis) thesis, section 5.2).
+
+For performance constraints, we strongly advise people to define their databases in a **separate**
+file, using the *unquote (quoteTerm ...)* trick to force normalization. Let's assume we have
+the following database, in the module TrieObj
+
+    myTrie : RTrie
+    myTrie = unquote ∘ quoteTerm ∘ p2
+           $ add-action (quote ∙-assocl)
+           $ add-action (quote ∙-assocr)
+           $ add-action (quote ∙-assoc)
+           $ add-action (quote ∙-assoc-join)
+           $ add-action (quote ᵒ-idp)
+           $ add-action (quote ᵒ-∙-distr)
+           $ add-action (quote ∙-id-l)
+           $ add-action (quote ∙-id-r)
+           $ add-action (quote ρ-intro)
+           $ 0 , BTrieEmpty
+           
+We could prove the twiceIsEven lemma in the following manner:
+
+First we open the `Auto` module, which is inside `RW.RW`. It takes two parameters. First
+the term database, and the later a function manipulating `RTermName`s, which will receive
+the relation which is the goal's head and should return the relation we need to use to build
+the search term. In our case, we are only searching for relational equality[^1].
+
+    open Auto myTrie (λ _ → (rdef $ quote _≡r_))
+
+    twiceIsEven : (twiceR ∙ evenR ⊆ evenR ∙ twiceR) ⇐ Unit
+    twiceIsEven 
+      = begin
+        twiceR ∙ evenR ⊆ evenR ∙ twiceR
+      ⇐⟨ (tactic (by (quote evenLemma))) ⟩
+        twiceR ∙ evenR ⊆ (ρ twiceR) ∙ twiceR
+      ⇐⟨ (tactic auto) ⟩
+        twiceR ∙ evenR ⊆ twiceR
+      ⇐⟨ (tactic auto ) ⟩
+        twiceR ∙ evenR ⊆ twiceR ∙ Id
+      ⇐⟨ (λ x → ∙-mono (p1 x) (p2 x)) ⟩
+        (twiceR ⊆ twiceR × evenR ⊆ Id)
+      ⇐⟨ (λ _ → ⊆-refl , φ⊆Id) ⟩
+        Unit
+      ∎
+
+[^1]: This opens up an interesting future work option. We could allow that function to
+return a list of names, and search them all!
 
 Using *RW*
 ==========
