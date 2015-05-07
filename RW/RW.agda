@@ -60,6 +60,7 @@ module RW.RW (db : TStratDB) where
       assemble _              = nothing
   Ag2RTypeFin* _ _ = nothing
 
+  -- Produces a list of RWData, one for each 'guessed' step.
   make-RWData* : List Name → AgTerm → List (Arg AgType) → Err StratErr (List RWData)
   make-RWData* acts goal ctx with Ag2RTerm goal | map type acts | map (Ag2RType ∘ unarg) ctx
   ...| g' | tys | ctx' with Ag2RTypeFin* g' tys
@@ -130,6 +131,8 @@ module RW.RW (db : TStratDB) where
   ------------------------------
   -- Adding Tries to the cake --
   ------------------------------
+
+  -- The proper way to handle multiple actions.
 
   open import RW.Data.RTrie
 
