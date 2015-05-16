@@ -37,6 +37,16 @@ module RW.Language.Instantiation where
 
   -------------------------------------------------
   -- Partial Substitutions
+  --
+  --   The complexity annotations might require 
+  --   a slight notational introduction.
+  --
+  --   If a variable name overlaps one in the corresponding type signature,
+  --   this is intentional.
+  --
+  --   Sₜ is defined by (S t), module RW.Language.RTermUtils.
+  --   #Fvₜ is defined by length (Fv t), where Fv is also in RTermUtils.
+  --
 
   X : ℕ → Set
   X = Vec (Maybe (RTerm ⊥))

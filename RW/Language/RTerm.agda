@@ -188,6 +188,15 @@ module RW.Language.RTerm where
             → (A → RTerm B) → RTerm A → RTerm B
   replace-A f = replace f ivar
 
+  -- equipped with a few usefull functor lemmas.
+  lemma-replace-rlam : ∀{a b}{A : Set a}{B : Set b}{f : A → RTerm B}{t : RTerm A}
+                     → replace-A f (rlam t) ≡ rlam (replace-A f t)
+  lemma-replace-rlam = refl
+
+  lemma-replace-rapp : ∀{a b}{A : Set a}{B : Set b}{f : A → RTerm B}{ts : List (RTerm A)}{n : RTermName}
+                     → replace-A f (rapp n ts) ≡ rapp n (map (replace-A f) ts)
+  lemma-replace-rapp = refl
+
   _◇-A_ : ∀{a b c}{A : Set a}{B : Set b}{C : Set c}
         → (B → RTerm C) → (A → RTerm B)
         → A → RTerm C
