@@ -98,7 +98,13 @@ module RW.Language.RTermUtils where
   -- equal. But in that case, (t ∩ t) is just a (fmap just), as we
   -- can see below.
   --
-  -- Therefore, _∩_ ∈ O(Sₜ)
+  -- Therefore, t ∩ t ∈ O(Sₜ)
+  --
+  -- In case we have two different terms, the smaller of
+  -- them will make _∩_ halt. Therefore,
+  --
+  -- t ∩ u ∈ O(min(Sₜ , Sᵤ))
+  --
   private
     mutual
       t∩t≡t : {A : Set}⦃ eqA : Eq A ⦄{t : RTerm A}
@@ -220,6 +226,9 @@ module RW.Language.RTermUtils where
   -- It is clear that we have some additional complexity on
   -- the function joinInner, but we will ignore this for
   -- the sake of simplicity, for now.
+  -- If we consider that most of the lemmas do not have more than 10
+  -- free variables, joinInner is of negligible run-time
+  -- (TODO: dangerous afirmation!!)
   -- 
   -- We'll then say that _-_ ∈ O(#Fvₜ).
   --
@@ -259,6 +268,10 @@ module RW.Language.RTermUtils where
       
 
   -- Term Subtraction, single result.
+  --
+  -- Disconsidering lazyness, (_-↓_ t) = fmap head ∘ (_-_ t)
+  -- Therefore, _-↓_ ∈ O(#Fvₜ).
+  -- 
   _-↓_ : ∀{A} ⦃ eqA : Eq A ⦄ → RTerm (Maybe A) → RTerm A → Maybe (RTerm A)
   t -↓ u with t - u
   ...| just []      = nothing

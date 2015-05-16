@@ -14,6 +14,17 @@ open import RW.Language.Instantiation
 --  on the head of both terms.
 module RW.Strategy where
   
+  --   The complexity annotations might require 
+  --   a slight notational introduction.
+  --
+  --   If a variable name overlaps one in the corresponding type signature,
+  --   this is intentional.
+  --
+  --   Sₜ is defined by (S t).
+  --   #Fvₜ is defined by length (Fv t).
+  --   Both measures are defined at RW.Language.RTermUtils.
+  --
+
   open import RW.Utils.Monads using (module Monad)
   open import RW.Utils.Error
   open Monad {{...}}

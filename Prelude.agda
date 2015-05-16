@@ -62,7 +62,7 @@ module Prelude where
     public
 
   open import Relation.Nullary
-    using (Dec; yes; no)
+    using (Dec; yes; no; ¬_)
     public
 
   open import Relation.Binary.PropositionalEquality
@@ -73,6 +73,10 @@ module Prelude where
     using (Maybe; just; nothing)
     renaming (maybe′ to maybe)
     public
+
+  dec2set : ∀{a}{A : Set a} → Dec A → Set
+  dec2set (yes _) = Unit
+  dec2set (no  _) = ⊥
 
   isTrue : ∀{a}{A : Set a} → Dec A → Bool
   isTrue (yes _) = true
@@ -142,3 +146,21 @@ module Prelude where
 
     enum-Maybe : ∀{A} ⦃ enA : Enum A ⦄ → Enum (Maybe A)
     enum-Maybe ⦃ enum aℕ ℕa ⦄ = enum (maybe aℕ nothing) (just ∘ ℕa)
+
+    eq-List : {A : Set}{{eq : Eq A}} → Eq (List A)
+    eq-List {A} {{eq _≟_}} = eq decide
+      where
+        open import Data.List.Properties
+          renaming (∷-injective to ∷-inj)
+
+        decide : (a b : List A) → Dec (a ≡ b)
+        decide [] (_ ∷ _) = no (λ ())
+        decide (_ ∷ _) [] = no (λ ())
+        decide []   []    = yes refl
+        decide (a ∷ as) (b ∷ bs)
+          with a ≟ b | decide as bs
+        ...| yes a≡b | yes as≡bs 
+          rewrite a≡b = yes (cong (_∷_ b) as≡bs)
+        ...| no  a≢b | yes as≡bs = no (a≢b ∘ p1 ∘ ∷-inj)
+        ...| yes a≡b | no  as≢bs = no (as≢bs ∘ p2 ∘ ∷-inj)
+        ...| no  a≢b | no  as≢bs = no (a≢b ∘ p1 ∘ ∷-inj)
