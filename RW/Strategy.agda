@@ -125,8 +125,41 @@ module RW.Strategy where
   ...| i1 _ = try-all f e as
   ...| i2 r = return r
 
-  -- Basic unification
-  -- TODO: how to take care of symmetry for the case where action receives zero arguments?
+  -- Basic unification strategy
+  -- 
+  --  g□ ← g₁ ∩↑ g₂    ∈ O(min(Sg₁, Sg₂))
+  --  t1 ← g□ -↓ g₁    ∈ O(# Fv g□)
+  --  u1 ← inst ty1 t1 ∈ O(ty1n² + (Sty1 + 1) × ty1n + Sty1)
+  --  t2 ← g□ -↓ g₂    ∈ O(# Fv g□)
+  --  u2 ← inst ty2 t2 ∈ O(ty2n² + (Sty2 + 1) × ty2n + Sty2)
+  --
+  --  Summing everything up and symplifying a bit, we get:
+  --  (Note that S ty = S t₁ + S t₂ + 1)
+  --
+  --  min(Sg₁, Sg₂) + 2 #(Fv g□) + t₁² + t₂² + Sty₁ ty₁ + Sty2 ty₂ 
+  --                                                    + t₁ + t₂ + ST - 1
+  --
+  --  Yet, g□, ideally is our context, with one hole, since
+  --  we are doing one rewrite at a time. Therefore #Fv g□ = 1. 
+  --  Prunning out this constant we get:
+  --
+  --  min(Sg₁, Sg₂) + t₁² + t₂² + Sty₁ ty₁ + Sty2 ty₂ + t₁ + t₂ + ST
+  --
+  --  wlog, let us assume that t₁ ≥ t₂ and Sty1 ≥ Sty2.
+  --  So,
+  --      2t₁² + 2S₁t₁ + 2t₁ + 2S₁ 
+  --         ≥ t₁² + t₂² + Sty₁ ty₁ + Sty2 ty₂ + t₁ + t₂ + ST
+  --
+  --  Also ignoring min(Sg₁, Sg₂), since it can be seen as a constant,
+  --  Our basic unification strategy is somewhere around:
+  -- 
+  --  basic ∈ O(2t(t + S + 1) + 2S), for t = max(t₁ , t₂) 
+  --                                 and S = max(St₁ , St₂) 
+  -- 
+  --  Which was expected! Our RTermUtils functions are linear in some of
+  --  the parameters that appeared here, and instantiation was the 
+  --  only quadratic one, on the number of free variables to instantiate.
+  --  
   basic : RWData → Err StratErr UData
   basic (rw-data (hdₓ , g1 , g2) zero (hdₐ , ty1 , ty2) _ )
     = let g□ = g1 ∩↑ g2
@@ -142,7 +175,7 @@ module RW.Strategy where
   -- Unification over the symmetric action type.
   basic-sym : RWData → Err StratErr UData
   basic-sym (rw-data (hdₓ , g1 , g2) tn (hdₐ , ty1 , ty2) _ )
-    = let g□ = g1 ∩↑ g2
+    = let g□ = g1 ∩↑ g2 
           u1 = (g□ -↓ g1) >>= (inst ty2)
           u2 = (g□ -↓ g2) >>= (inst ty1)
           σ  = μ ((_++ₓ_ <$> u1) <*> u2)
