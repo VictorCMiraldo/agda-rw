@@ -51,7 +51,7 @@ module Prelude where
     public
 
   open import Data.Sum
-    using (_⊎_)
+    using (_⊎_; [_,_]′)
     renaming (inj₁ to i1; inj₂ to i2
            ; [_,_] to either)
     public
@@ -73,6 +73,11 @@ module Prelude where
     using (Maybe; just; nothing)
     renaming (maybe′ to maybe)
     public
+
+  dec-elim : ∀{a b}{A : Set a}{B : Set b}
+           → (A → B) → (¬ A → B) → Dec A → B
+  dec-elim f g (yes p) = f p
+  dec-elim f g (no  p) = g p
 
   dec2set : ∀{a}{A : Set a} → Dec A → Set
   dec2set (yes _) = Unit

@@ -281,18 +281,64 @@ module RW.Language.RTermUtils where
   -- Structural Manipulation
 
   {-# TERMINATING #-}
-  lift-ivar' : ℕ → RTerm ⊥ → RTerm ℕ
-  lift-ivar' _ (ovar ())
-  lift-ivar' d (ivar n) with d ≤? n
-  ...| yes _ = ovar n
+  map-ivar : {A : Set} → ℕ → (ℕ → RTerm A) → RTerm ⊥ → RTerm A
+  map-ivar _ f (ovar ())
+  map-ivar d f (ivar n) with d ≤? n
+  ...| yes _ = f n
   ...| no  _ = ivar n
-  lift-ivar' _ (rlit l) = rlit l
-  lift-ivar' d (rlam t) = rlam (lift-ivar' (suc d) t)
-  lift-ivar' d (rapp n ts) = rapp n (map (lift-ivar' d) ts)
+  map-ivar _ f (rlit l) = rlit l
+  map-ivar d f (rlam t) = rlam (map-ivar (suc d) f t)
+  map-ivar d f (rapp n ts) = rapp n (map (map-ivar d f) ts)
   
   -- Lift ivar's to ovar's
   lift-ivar : RTerm ⊥ → RTerm ℕ
-  lift-ivar = lift-ivar' 0
+  lift-ivar = map-ivar 0 ovar
+
+  private
+    last : {A : Set} → List A → Maybe A
+    last [] = nothing
+    last (x ∷ []) = just x
+    last (_ ∷ xs) = last xs
+
+    strip-last : {A : Set} → List A → List A
+    strip-last [] = []
+    strip-last (x ∷ []) = []
+    strip-last (x ∷ xs) = x ∷ (strip-last xs)
+
+    -- last argument
+    larg : {B : Set} → RTerm B → Maybe (RTerm B)
+    larg (rapp n []) = nothing
+    larg (rapp n ts) = last ts
+    larg _           = nothing
+
+    dec : ℕ → ℕ
+    dec zero = zero
+    dec (suc x) = x
+
+    strip-larg : {B : Set} → RTerm B → RTerm B
+    strip-larg (rapp n ts) = rapp n (strip-last ts)
+    strip-larg t           = t
+
+    {-# TERMINATING #-}
+    n-is-in : {B : Set} → ℕ → RTerm B → Bool
+    n-is-in n (ivar k) = dec-elim (const true) (const false) (n ≟-ℕ k)
+    n-is-in n (rapp _ ts) = foldr (λ h r → n-is-in n h or r) false ts
+    n-is-in n (rlam t) = n-is-in (suc n) t
+    n-is-in _ _ = false
+
+  {-# TERMINATING #-}
+  η : RTerm ⊥ → RTerm ⊥
+  η (ovar x) = ovar x
+  η (ivar n) = ivar n
+  η (rlit l) = rlit l
+  η (rlam t) with η t
+  ...| t' with larg t'
+  ...| just (ivar 0)
+     = if n-is-in 0 (strip-larg t') 
+       then rlam t'
+       else map-ivar 0 (ivar ∘ dec) (strip-larg t')
+  ...| _             = rlam t'
+  η (rapp n ts) = rapp n (map η ts)
   
   -- Models a binary application
   RBinApp : ∀{a} → Set a → Set _
@@ -314,3 +360,5 @@ module RW.Language.RTermUtils where
   typeArity : ∀{a}{A : Set a} → RTerm A → ℕ
   typeArity (rapp impl (t1 ∷ t2 ∷ [])) = suc (typeArity t2)
   typeArity _                          = 0
+
+  
