@@ -12,7 +12,7 @@
 --
 module Prelude where
 
-  open import Data.Unit
+  open import Data.Unit.NonEta
     using (Unit; unit)
     public
 

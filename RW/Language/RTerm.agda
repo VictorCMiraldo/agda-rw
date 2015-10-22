@@ -276,6 +276,14 @@ module RW.Language.RTerm where
         = unsuportedSyntax "Variables with arguments."
       convert' _ (lit _)
         = unsuportedSyntax "Non-ℕ literals."
+      convert' _ (quote-goal _)
+        = unsuportedSyntax "Reflection constructs not supported"
+      convert' _ (quote-term _)
+        = unsuportedSyntax "Reflection constructs not supported"
+      convert' _ quote-context
+        = unsuportedSyntax "Reflection constructs not supported"
+      convert' _ (unquote-term _ _)
+        = unsuportedSyntax "Reflection constructs not supported"
 
       convertChildren : ℕ → List (Arg AgTerm) → List (RTerm ⊥)
       convertChildren d [] = []
