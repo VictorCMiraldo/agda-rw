@@ -1,7 +1,7 @@
 # agda-rw
 
 This is the place where (more or less) stable releases of my RW library will be published.
-For a more in-depth description of what's going on, please check my [main repo](https://github.com/VictorCMiraldo/msc-agda-tactics).
+For a more in-depth description of what's going on, please check my [main repo](https://github.com/VictorCMiraldo/msc-agda-tactics) or chapter 4 of my [thesis](http://victorcmiraldo.github.io/data/MiraldoMsc.pdf).
 
 The *RW* lib
 ============
