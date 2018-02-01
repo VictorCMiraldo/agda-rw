@@ -4,7 +4,7 @@ open import Data.Fin using (Fin; toℕ) renaming (inject+ to finject; raise to f
 open import Data.List.All as A
 open import Data.Vec using (Vec; _∷_; [])
 
-open import Data.Nat renaming (decTotalOrder to decTotalOrder-ℕ)
+open import Data.Nat.Properties renaming (≤-decTotalOrder to decTotalOrder-ℕ)
 open import Relation.Binary using (module DecTotalOrder)
 
 module RW.Language.Instantiation where

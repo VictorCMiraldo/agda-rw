@@ -1,0 +1,3 @@
+name: agda-rw
+include: .
+depend: standard-library

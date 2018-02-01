@@ -87,7 +87,6 @@ module RW.Language.GoalGuesser (maxH : ℕ) where
       ...| nothing = replace-A (λ ()) t
       ...| just x' = ovar x'
 
-      {-# TERMINATING #-}
       mk-inst-f : {n : ℕ} → RTerm ⊥ → NonDet (Fin (suc n) → RTerm (Fin n))
       mk-inst-f (ovar ())
       mk-inst-f (ivar n) = return (▵ (ivar n))

@@ -2,6 +2,8 @@ open import Prelude
 open import Reflection renaming (Term to AgTerm; Type to AgType)
 open import Data.String using (String)
 
+open import Data.Unit
+
 open import RW.Language.RTerm
 open import RW.Language.RTermUtils
 open import RW.Language.FinTerm
@@ -20,6 +22,9 @@ module RW.RW (db : TStratDB) where
   -- Housekeeping --
   ------------------
 
+  _>>=TC_ : ∀ {a b} {A : Set a} {B : Set b} → TC A → (A → TC B) → TC B
+  _>>=TC_ = bindTC 
+
   -- We need to bring our instances into scope explicitely,
   -- to make Agda happy.
   private
@@ -37,13 +42,17 @@ module RW.RW (db : TStratDB) where
 
   -- TODO: fix the duality: "number of ivar's lifted to ovar's vs. parameters we need to guess"
 
-  make-RWData : Name → AgTerm → List (Arg AgType) → Err StratErr RWData
-  make-RWData act goal ctx with η (Ag2RTerm goal) | Ag2RTypeFin (type act) | map (Ag2RType ∘ unarg) ctx
+  make-RWData-aux : Name → AgType → AgTerm → List (Arg AgType) → TC RWData
+  make-RWData-aux act actty goal ctx with η (Ag2RTerm goal) | Ag2RTypeFin actty | map (Ag2RType ∘ unarg) ctx
   ...| g' | tyℕ , ty | ctx' with forceBinary g' | forceBinary (typeResult ty)
-  ...| just g | just a = return (rw-data g tyℕ a ctx')
-  ...| just _ | nothing = throwError (Custom "Something strange happened with the action")
-  ...| nothing | just _ = throwError (Custom "Something strange happened with the goal")
-  ...| nothing | nothing = throwError (Custom "My brain just exploded.") 
+  ...| just g | just a = returnTC (rw-data g tyℕ a ctx')
+  ...| just _ | nothing = typeError (strErr "Something strange happened with the action" ∷ [])
+  ...| nothing | just _ = typeError (strErr "Something strange happened with the goal" ∷ [])
+  ...| nothing | nothing = typeError (strErr "My brain just exploded." ∷ []) 
+
+
+  make-RWData : Name → AgTerm → List (Arg AgType) → TC RWData
+  make-RWData act goal ctx = getType act >>=TC λ ty → make-RWData-aux act ty goal ctx
 
   -- Given a goal and a list of actions to apply to such goal, return
   -- a list l₁ ⋯ lₙ such that ∀ 0 < i ≤ n . tyᵢ : p1 lᵢ → p1 lᵢ₊₁ 
@@ -61,14 +70,23 @@ module RW.RW (db : TStratDB) where
   Ag2RTypeFin* _ _ = nothing
 
   -- Produces a list of RWData, one for each 'guessed' step.
-  make-RWData* : List Name → AgTerm → List (Arg AgType) → Err StratErr (List RWData)
-  make-RWData* acts goal ctx with Ag2RTerm goal | map type acts | map (Ag2RType ∘ unarg) ctx
-  ...| g' | tys | ctx' with Ag2RTypeFin* g' tys
-  ...| nothing = throwError (Custom "Are you sure you can apply those steps?")
-  ...| just r  = i2 (map (λ x → rw-data (p1 x) (p1 (p2 x)) (p2 (p2 x)) ctx') r)
+  make-RWData*-aux : List Name → List AgType → AgTerm → List (Arg AgType) → TC (List RWData)
+  make-RWData*-aux acts tys goal ctx with Ag2RTerm goal | map (Ag2RType ∘ unarg) ctx
+  ...| g' | ctx' with Ag2RTypeFin* g' tys
+  ...| nothing = typeError (strErr "Are you sure you can apply those steps?" ∷ [])
+  ...| just r  = returnTC (map (λ x → rw-data (p1 x) (p1 (p2 x)) (p2 (p2 x)) ctx') r)
+  
+  mapTC : ∀{a b}{A : Set a}{B : Set b}
+        → (A → TC B) → List A → TC (List B)
+  mapTC f [] = returnTC []
+  mapTC f (x ∷ xs) = f x >>=TC λ x' → mapTC f xs >>=TC λ xs' → returnTC (x' ∷ xs')
+
+  make-RWData* : List Name → AgTerm → List (Arg AgType) → TC (List RWData)
+  make-RWData* acts goal ctx = mapTC getType acts >>=TC λ tys → make-RWData*-aux acts tys goal ctx
 
   postulate
-    RW-error : ∀{a}{A : Set a} → String → A
+    RW-error  : ∀{a}{A : Set a} → String → A
+    RW-error' : ∀{a}{A : Set a} → RWData → A
 
   RWerr : Name → RWData → Err StratErr (RWData × UData × RTerm ⊥)
   RWerr act d
@@ -80,21 +98,53 @@ module RW.RW (db : TStratDB) where
   RWerr-less : Name → RWData → Err StratErr (RTerm ⊥)
   RWerr-less act d = RWerr act d >>= return ∘ p2 ∘ p2
 
+  runErrTC : {A : Set} → Err StratErr A → TC A
+  runErrTC f with runErr f
+  ...| i1 err = typeError (RW-error err)
+  ...| i2 res = returnTC res
+
   ----------------
   -- By Tactics --
   ----------------
 
   -- Standard debugging version.
-  by' : Name → List (Arg AgType) → AgTerm → (RWData × UData × RTerm ⊥)
-  by' act ctx goal with runErr (make-RWData act goal ctx >>= RWerr act)
-  ...| i1 err  = RW-error err
-  ...| i2 term = term
-
+  by' : Name → List (Arg AgType) → AgTerm → TC (RWData × UData × RTerm ⊥)
+  by' act ctx goal = make-RWData act goal ctx 
+                 >>=TC λ rwdata → runErrTC (RWerr act rwdata)
+  
   -- This function is only beeing used to pass the context
   -- given by the 'tactic' keyword around.
-  by : Name → List (Arg AgType) → AgTerm → AgTerm
-  by act ctx goal = R2AgTerm ∘ p2 ∘ p2 $ (by' act ctx goal)
+  by-aux : Name → List (Arg AgType) → AgTerm → TC AgTerm
+  by-aux act ctx goal = by' act ctx goal >>=TC (returnTC ∘ R2AgTerm ∘ p2 ∘ p2)
 
+  postulate 
+    RTermError : ∀{a}{A : Set a} → RTerm A → ErrorPart
+
+  macro
+    by : Name → AgTerm → TC ⊤
+    by act qhole = getContext 
+               >>=TC λ ctx  → inferType qhole
+               >>=TC λ goal → by-aux act ctx goal 
+               >>=TC λ res  → unify qhole res
+
+    show-me : AgTerm → AgTerm → TC ⊤
+    show-me u qhole = quoteTC (Ag2RTerm u)
+                  >>=TC λ x → normalise x
+                  >>=TC λ x' → typeError (termErr x' ∷ []) 
+
+-- normalise u >>=TC λ u' → typeError (RTermError (Ag2RTerm u') ∷ [])
+
+    by-dbg : Name → AgTerm → TC ⊤
+    by-dbg act qhole = getContext 
+               >>=TC λ ctx  → inferType qhole
+               >>=TC λ goal → by' act ctx goal 
+               >>=TC λ { (rwdata , udata , res) → quoteTC rwdata
+               >>=TC λ rwdata' → quoteTC udata
+               >>=TC λ udata' → quoteTC (R2AgTerm res)
+               >>=TC λ resQ → normalise resQ
+               >>=TC λ res' → typeError (termErr res' ∷ []) }
+
+{-
   -- Handling multiple actions, naive way.
   -- by+ is pretty much foldM (<|>) error (by ⋯),
   -- where (<|>) is the usual alternative from Error Monad.
@@ -173,3 +223,4 @@ module RW.RW (db : TStratDB) where
     auto ctx goal with runErr (auto-internal ctx goal)
     ...| i1 err = RW-error err
     ...| i2 r   = r
+-}

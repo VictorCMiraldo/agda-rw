@@ -2,7 +2,8 @@ open import Prelude
 open import Level using (Level) renaming (zero to lz; suc to ls)
 open import Data.List.Properties as ListProps renaming (∷-injective to ∷-inj)
 open import Data.String
-open import Data.Nat as Nat using (decTotalOrder; _≤_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-decTotalOrder)
+open import Data.Nat as Nat using (_≤_; s≤s; z≤n)
 open import Relation.Binary using (module DecTotalOrder)
 
 module RW.Language.RTerm where
@@ -10,7 +11,7 @@ module RW.Language.RTerm where
   open import Reflection renaming (Term to AgTerm; Type to AgType)
     public
 
-  open DecTotalOrder Nat.decTotalOrder using (total)
+  open DecTotalOrder ≤-decTotalOrder using (total)
 
   postulate
     unsuportedSyntax : ∀{a}{A : Set a} → String → A
@@ -261,9 +262,9 @@ module RW.Language.RTerm where
         = rapp (rcon c) (convertChildren d args)
       convert' d (def c args)
         = rapp (rdef c) (convertChildren d args)
-      convert' d (pi (arg (arg-info visible _) (el _ t₁)) (abs _ (el _ t₂)))
+      convert' d (pi (arg (arg-info visible _) t₁) (abs _ t₂)) 
         = rapp impl (convert' d t₁ ∷ convert' (suc d) t₂ ∷ [])
-      convert' d (pi _ (abs _ (el _ t₂))) = convert' (suc d) t₂
+      convert' d (pi _ (abs _ t₂)) = convert' (suc d) t₂
       convert' d (lam _ (abs _ l)) 
         = rlam (convert' (suc d) l)
       convert' _ (pat-lam _ _)
@@ -276,13 +277,7 @@ module RW.Language.RTerm where
         = unsuportedSyntax "Variables with arguments."
       convert' _ (lit _)
         = unsuportedSyntax "Non-ℕ literals."
-      convert' _ (quote-goal _)
-        = unsuportedSyntax "Reflection constructs not supported"
-      convert' _ (quote-term _)
-        = unsuportedSyntax "Reflection constructs not supported"
       convert' _ quote-context
-        = unsuportedSyntax "Reflection constructs not supported"
-      convert' _ (unquote-term _ _)
         = unsuportedSyntax "Reflection constructs not supported"
 
       convertChildren : ℕ → List (Arg AgTerm) → List (RTerm ⊥)
@@ -298,7 +293,7 @@ module RW.Language.RTerm where
   -- Handling Types
 
   Ag2RType : AgType → RTerm ⊥
-  Ag2RType (el _ t) = Ag2RTerm t
+  Ag2RType t = Ag2RTerm t
 
   -----------------------------------------
   -- Converting Back to Agda
@@ -316,10 +311,9 @@ module RW.Language.RTerm where
       trevnoc' (rapp (rcon x) ts) = con x (trevnocChildren ts)
       trevnoc' (rapp (rdef x) ts) = def x (trevnocChildren ts)
       trevnoc' (rapp impl (t1 ∷ t2 ∷ [])) = pi (arg (arg-info visible relevant) 
-               (el unknown (trevnoc' t1))) 
-               (abs "_" (el unknown (trevnoc' t2)))
+               (trevnoc' t1)) 
+               (abs "_" (trevnoc' t2))
       trevnoc' (rapp impl _) = error "impl should have two arguments... always."
-
       trevnocChildren : List (RTerm ⊥) → List (Arg AgTerm)
       trevnocChildren []        = []
       trevnocChildren (x ∷ xs)  = arg (arg-info visible relevant) (trevnoc' x) ∷ trevnocChildren xs

@@ -36,6 +36,7 @@ module RW.Strategy.PropEq where
     }
 
   open import RW.RW (≡-strat ∷ [])
-
+{-
   by*-≡ : by*-tactic
   by*-≡ = by* (quote trans)
+-}

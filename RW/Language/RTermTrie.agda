@@ -10,13 +10,13 @@ module RW.Language.RTermTrie where
 
   open import RW.Utils.Monads
   open Monad {{...}}
-
+{-
   add-action : Name → ℕ × RTrie → ℕ × RTrie
   add-action act bt
     = let
-      ty = lift-ivar $ typeResult $ Ag2RType $ type act
+      ty = lift-ivar $ typeResult $ Ag2RType $ getType act
     in insertTerm act ty bt
-
+-}
   replicateM : {A : Set} → List (Maybe A) → Maybe (List A)
   replicateM [] = just []
   replicateM (nothing ∷ _)  = nothing

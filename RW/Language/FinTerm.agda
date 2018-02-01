@@ -1,6 +1,7 @@
 open import Prelude renaming (_++_ to _++-List_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; zero; _+_; _≤_; z≤n; s≤s; _≤?_) renaming (decTotalOrder to decTotalOrder-ℕ)
+open import Data.Nat using (ℕ; suc; zero; _+_; _≤_; z≤n; s≤s; _≤?_) 
+open import Data.Nat.Properties renaming (≤-decTotalOrder to decTotalOrder-ℕ)
 open import Data.Nat.Properties as ℕ-Props
 open import Data.Nat.Properties.Simple using (+-suc; +-comm)
 open import Data.Fin using (Fin; toℕ; fromℕ≤) renaming (inject+ to finject; raise to fraise; zero to fzero; suc to fsuc)
