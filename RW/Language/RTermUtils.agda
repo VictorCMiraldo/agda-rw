@@ -1,7 +1,6 @@
 open import Prelude
 open import Data.Nat using (_≤?_)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
-open import Reflection using (_≟-Lit_; _≟-Name_)
 
 open import RW.Language.RTerm
 open import RW.Utils.Monads
@@ -182,7 +181,7 @@ module RW.Language.RTermUtils where
   hole2Absℕ : RTerm Unit → RTerm ℕ
   hole2Absℕ = replace-A ⊥-elim ∘ hole2Abs
 
-  open import Data.String hiding (_++_)
+  open import Data.String hiding (_++_; concat)
   postulate
     err : ∀{a}{A : Set a} → String → A
 
@@ -203,7 +202,7 @@ module RW.Language.RTermUtils where
   --
   {-# TERMINATING #-}
   _-_ : ∀{A} ⦃ eqA : Eq A ⦄ → RTerm (Maybe A) → RTerm A → Maybe (List (RTerm A))
-  hole - t = return (t ∷ [])
+  hole - t = just (t ∷ [])
   (rapp x ax) - (rapp y ay) with x ≟-RTermName y
   ...| no  _ = nothing -- err "1"
   ...| yes _ = joinInner (map (uncurry _-_) (zip ax ay))       
@@ -238,8 +237,7 @@ module RW.Language.RTermUtils where
 
     mutual
       t-t≡Fvt : {A : Set}⦃ eqA : Eq A ⦄(t : RTerm A)
-              → (fmap-nothing t) - t 
-              ≡ just (map ovar (Fv t))
+              → (fmap-nothing t) - t ≡ just (map ovar (Fv t))
       t-t≡Fvt (ovar x) = refl
       t-t≡Fvt (ivar n) with n ≟-ℕ n
       ...| yes n≡n = refl

@@ -12,9 +12,15 @@
 --
 module Prelude where
 
-  open import Data.Unit.NonEta
-    using (Unit; unit)
+  open import Data.Unit
+    using (⊤; tt)
     public
+
+  Unit : Set
+  Unit = ⊤
+
+  unit : Unit
+  unit = tt
 
   open import Data.Empty
     using (⊥; ⊥-elim)
@@ -25,12 +31,12 @@ module Prelude where
     public
 
   open import Data.Nat 
-    using (ℕ; suc; zero; _+_; _*_; _∸_)
-    renaming (_≟_ to _≟-ℕ_; _≤?_ to _≤?-ℕ_) 
+    using (ℕ; suc; zero; _+_; _*_; _∸_; _≤_; s≤s; z≤n)
+    renaming (_≟_ to _≟-ℕ_; _≤?_ to _≤?-ℕ_)
     public
                                           
   open import Data.Fin 
-    using (Fin; fromℕ; fromℕ≤; toℕ)
+    using (Fin; fromℕ; fromℕ<; toℕ)
     renaming (zero to fz; suc to fs)
     public
 
@@ -41,7 +47,8 @@ module Prelude where
 
   open import Data.List 
     using (List; _∷_; []; map; _++_; zip; filter;
-           all; any; concat; foldr; reverse; length)
+           all; any; concat; foldr; reverse; length; boolFilter)
+
     public
 
   open import Data.Product
@@ -71,7 +78,7 @@ module Prelude where
 
   open import Data.Maybe 
     using (Maybe; just; nothing)
-    renaming (maybe′ to maybe)
+    renaming (maybe′ to maybe; map to Maybe-map)
     public
 
   dec-elim : ∀{a b}{A : Set a}{B : Set b}
@@ -80,7 +87,7 @@ module Prelude where
   dec-elim f g (no  p) = g p
 
   dec2set : ∀{a}{A : Set a} → Dec A → Set
-  dec2set (yes _) = Unit
+  dec2set (yes _) = ⊤
   dec2set (no  _) = ⊥
 
   isTrue : ∀{a}{A : Set a} → Dec A → Bool
@@ -124,7 +131,7 @@ module Prelude where
       where
         fromℕ-partial : ℕ → Maybe (Fin n)
         fromℕ-partial m with suc m ≤?-ℕ n
-        ...| yes prf = just (fromℕ≤ {m} {n} prf)
+        ...| yes prf = just (fromℕ< {m} {n} prf)
         ...| no  _   = nothing
 
     eq-⊥ : Eq ⊥

@@ -5,15 +5,15 @@ open import RW.Language.RTerm using (Name)
 open import RW.Strategy.PropEq
 open import RW.RW (≡-strat ∷ [])
 
-open import Data.Nat.Properties.Simple 
+open import Data.Nat.Properties
   using (+-comm; +-right-identity; +-assoc)
 
-module PropEqTest where
+module Testing.PropEqTest where
 
     ++-assoc : ∀{a}{A : Set a}(xs ys zs : List A) → 
                (xs ++ ys) ++ zs ≡ xs ++ (ys ++ zs)
     ++-assoc [] ys zs       = refl
-    ++-assoc (x ∷ xs) ys zs = tactic (by (quote ++-assoc))
+    ++-assoc (x ∷ xs) ys zs = {! by ++-assoc !}
   
     open ≡-Reasoning
 
@@ -34,7 +34,7 @@ module PropEqTest where
                 x ∷ (xs ++ ys) ++ zs
               ≡⟨ refl ⟩
                 x ∷ ((xs ++ ys) ++ zs)
-              ≡⟨ (tactic (by (quote ++-assocH))) ⟩ 
+              ≡⟨ {! by (quote ++-assocH) !} ⟩ 
                 x ∷ (xs ++ (ys ++ zs))
               ≡⟨ refl ⟩
                 (x ∷ xs) ++ (ys ++ zs)
@@ -43,8 +43,10 @@ module PropEqTest where
     []-++-neutral : ∀{a}{A : Set a}(xs : List A)
                   → xs ++ [] ≡ xs
     []-++-neutral [] = refl
-    []-++-neutral (x ∷ xs) = tactic (by (quote []-++-neutral))
+    []-++-neutral (x ∷ xs) = {! by (quote []-++-neutral) !}
 
+
+{-
     test1 : (x y : ℕ) → (x + y) + 0 ≡ y + (x + 0)
     test1 x y
       = begin
@@ -61,3 +63,5 @@ module PropEqTest where
       where
         acts : List Name
         acts = quote +-right-identity ∷ quote +-assoc ∷ quote +-comm ∷ []
+
+-}

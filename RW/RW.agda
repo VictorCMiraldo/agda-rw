@@ -1,5 +1,5 @@
 open import Prelude
-open import Reflection renaming (Term to AgTerm; Type to AgType)
+open import Reflection renaming (Term to AgTerm; Type to AgType; return to returnR; _>>=_ to _>>=R_)
 open import Data.String using (String)
 
 open import RW.Language.RTerm
@@ -30,6 +30,12 @@ module RW.RW (db : TStratDB) where
     unarg : {A : Set} → Arg A → A
     unarg (arg _ x) = x
 
+  returnE : {A : Set} → A → Err StratErr A
+  returnE x = i2 x
+
+  _>>=E_ : ∀{A B} → Err StratErr A → (A → Err StratErr B) → Err StratErr B
+  x >>=E f = _>>=_ {{ MonadError }} x f
+
   -- We need to translate types to FinTerms, so we know how many variables
   -- we're expecting to guess from instantiation.
   Ag2RTypeFin : AgType → ∃ FinTerm
@@ -37,10 +43,10 @@ module RW.RW (db : TStratDB) where
 
   -- TODO: fix the duality: "number of ivar's lifted to ovar's vs. parameters we need to guess"
 
-  make-RWData : Name → AgTerm → List (Arg AgType) → Err StratErr RWData
-  make-RWData act goal ctx with η (Ag2RTerm goal) | Ag2RTypeFin (type act) | map (Ag2RType ∘ unarg) ctx
+  make-RWData : AgType → AgTerm → List (Arg AgType) → Err StratErr RWData
+  make-RWData actTy goal ctx with η (Ag2RTerm goal) | Ag2RTypeFin actTy | map (Ag2RType ∘ unarg) ctx
   ...| g' | tyℕ , ty | ctx' with forceBinary g' | forceBinary (typeResult ty)
-  ...| just g | just a = return (rw-data g tyℕ a ctx')
+  ...| just g | just a = returnE (rw-data g tyℕ a ctx')
   ...| just _ | nothing = throwError (Custom "Something strange happened with the action")
   ...| nothing | just _ = throwError (Custom "Something strange happened with the goal")
   ...| nothing | nothing = throwError (Custom "My brain just exploded.") 
@@ -50,7 +56,7 @@ module RW.RW (db : TStratDB) where
   Ag2RTypeFin* : RTerm ⊥ → List AgType → Maybe (List (RBinApp ⊥ × ∃ (RBinApp ∘ Fin)))
   Ag2RTypeFin* (rapp n (g₁ ∷ g₂ ∷ [])) tys 
     =            mapM (return ∘ Ag2RTypeFin) tys
-    >>=          mapM (λ v → forceBinary (typeResult (p2 v)) >>= (return ∘ (_,_ $ p1 v)))
+    >>=          mapM (λ v → forceBinary (typeResult (p2 v)) >>= (just ∘ (_,_ $ p1 v)))
     >>= λ tys' → (divideGoal (n , g₁ , g₂) tys' >>= assemble)
     >>= λ gs   → return (zip gs tys')
     where
@@ -61,9 +67,9 @@ module RW.RW (db : TStratDB) where
   Ag2RTypeFin* _ _ = nothing
 
   -- Produces a list of RWData, one for each 'guessed' step.
-  make-RWData* : List Name → AgTerm → List (Arg AgType) → Err StratErr (List RWData)
-  make-RWData* acts goal ctx with Ag2RTerm goal | map type acts | map (Ag2RType ∘ unarg) ctx
-  ...| g' | tys | ctx' with Ag2RTypeFin* g' tys
+  make-RWData* : List AgType → AgTerm → List (Arg AgType) → Err StratErr (List RWData)
+  make-RWData* actTys goal ctx with Ag2RTerm goal | map (Ag2RType ∘ unarg) ctx
+  ...| g' | ctx' with Ag2RTypeFin* g' actTys
   ...| nothing = throwError (Custom "Are you sure you can apply those steps?")
   ...| just r  = i2 (map (λ x → rw-data (p1 x) (p1 (p2 x)) (p2 (p2 x)) ctx') r)
 
@@ -72,38 +78,52 @@ module RW.RW (db : TStratDB) where
 
   RWerr : Name → RWData → Err StratErr (RWData × UData × RTerm ⊥)
   RWerr act d
-    =   runUStrats d
-    >>= λ u → runTStrats db d act u
-    >>= λ v → return (d , u , v)
+    = runUStrats d >>=E (λ u 
+    → runTStrats db d act u >>=E (λ v → returnE (d , u , v)))
 
   -- A variant with less information, more suitable to be map'ed.
   RWerr-less : Name → RWData → Err StratErr (RTerm ⊥)
-  RWerr-less act d = RWerr act d >>= return ∘ p2 ∘ p2
+  RWerr-less act d = (RWerr act d) >>=E (returnE ∘ p2 ∘ p2)
 
   ----------------
   -- By Tactics --
   ----------------
 
   -- Standard debugging version.
-  by' : Name → List (Arg AgType) → AgTerm → (RWData × UData × RTerm ⊥)
-  by' act ctx goal with runErr (make-RWData act goal ctx >>= RWerr act)
+  tact-by' : Name → AgType → List (Arg AgType) → AgTerm → (RWData × UData × RTerm ⊥)
+  tact-by' act actTy ctx goal with runErr (make-RWData actTy goal ctx >>=E RWerr act)
   ...| i1 err  = RW-error err
   ...| i2 term = term
 
   -- This function is only beeing used to pass the context
   -- given by the 'tactic' keyword around.
-  by : Name → List (Arg AgType) → AgTerm → AgTerm
-  by act ctx goal = R2AgTerm ∘ p2 ∘ p2 $ (by' act ctx goal)
+  tact-by : Name → AgType → List (Arg AgType) → AgTerm → AgTerm
+  tact-by act actTy ctx goal = R2AgTerm ∘ p2 ∘ p2 $ (tact-by' act actTy ctx goal)
 
+  blockIfMeta : AgType → TC AgType
+  blockIfMeta (meta x _) = blockOnMeta x
+  blockIfMeta x          = returnR x
+
+  macro
+    by : Name → AgTerm → TC ⊤
+    by act h = inferType h >>=R λ typeH'
+             → blockIfMeta h >>=R λ typeH
+             → getType act >>=R λ actTy 
+             → getContext >>=R λ ctx 
+             → typeError (termErr typeH ∷ [])
+             -- → unify h (tact-by act actTy ctx typeH)
+{-
   -- Handling multiple actions, naive way.
   -- by+ is pretty much foldM (<|>) error (by ⋯),
   -- where (<|>) is the usual alternative from Error Monad.
-  by+ : List Name → List (Arg AgType) → AgTerm → AgTerm
-  by+ [] _ _ = RW-error "No suitable action"
-  by+ (a ∷ as) ctx goal with runErr (make-RWData a goal ctx >>= RWerr a)
-  ...| i1 _ = by+ as ctx goal
+  tact-by+ : List Name → List (Arg AgType) → AgTerm → AgTerm
+  tact-by+ [] _ _ = RW-error "No suitable action"
+  tact-by+ (a ∷ as) ctx goal with runErr (make-RWData a goal ctx >>=E RWerr a)
+  ...| i1 _ = tact-by+ as ctx goal
   ...| i2 t = R2AgTerm ∘ p2 ∘ p2 $ t
+-}
 
+{-
   join-tr : Name → List (RTerm ⊥) → RTerm ⊥
   join-tr _  []      = ivar 0
   join-tr tr (x ∷ l) = foldr (λ h r → rapp (rdef tr) (r ∷ h ∷ [])) x l
@@ -173,3 +193,5 @@ module RW.RW (db : TStratDB) where
     auto ctx goal with runErr (auto-internal ctx goal)
     ...| i1 err = RW-error err
     ...| i2 r   = r
+
+-}

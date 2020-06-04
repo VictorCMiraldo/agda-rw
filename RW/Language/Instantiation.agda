@@ -1,11 +1,7 @@
 open import Prelude renaming (_++_ to _++-List_)
 open import Data.Maybe using (Maybe; just; nothing; maybe; From-just)
 open import Data.Fin using (Fin; toℕ) renaming (inject+ to finject; raise to fraise; zero to fzero; suc to fsuc)
-open import Data.List.All as A
 open import Data.Vec using (Vec; _∷_; [])
-
-open import Data.Nat renaming (decTotalOrder to decTotalOrder-ℕ)
-open import Relation.Binary using (module DecTotalOrder)
 
 module RW.Language.Instantiation where
 

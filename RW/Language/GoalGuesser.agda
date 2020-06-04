@@ -32,7 +32,7 @@ module RW.Language.GoalGuesser (maxH : ℕ) where
   -- non-deterministic substitution of t₂ for t₁ in a given goal g.
   -- If no substitution could be performed, the empty list will be returned.
   _[_] : {A : Set}{{eqA : Eq A}} → RTerm A → RTerm A × RTerm A → NonDet (RTerm A)
-  g [ ty1 , ty2 ] = map p2 (filter p1 (substRTermAux g ty1 ty2))  
+  g [ ty1 , ty2 ] = map p2 (boolFilter p1 (substRTermAux g ty1 ty2))  
     where
       -- Non-deterministic term substitution. Possibly empty substitution.
       -- Since we're only interested in the situations where a single substitution is performed,
@@ -87,7 +87,6 @@ module RW.Language.GoalGuesser (maxH : ℕ) where
       ...| nothing = replace-A (λ ()) t
       ...| just x' = ovar x'
 
-      {-# TERMINATING #-}
       mk-inst-f : {n : ℕ} → RTerm ⊥ → NonDet (Fin (suc n) → RTerm (Fin n))
       mk-inst-f (ovar ())
       mk-inst-f (ivar n) = return (▵ (ivar n))
@@ -110,7 +109,7 @@ module RW.Language.GoalGuesser (maxH : ℕ) where
   -- Given a goal (a ▵ b) and a list of types L, try to find intermediate goals g₁⋯gₙ such
   -- that ∀n . tyₙ ∈ L ⇒ tyₙ : gₙ₋₁ → gₙ , where g₀ = a and gₖ = b.
   divideGoal : RBinApp ⊥ → List (Σ ℕ (RBinApp ∘ Fin)) → Maybe (List (RTerm ⊥))
-  divideGoal (gh , g1 , g2) l = sfHead (filter chainIsValid (stepGoals g1 l))
+  divideGoal (gh , g1 , g2) l = sfHead (boolFilter chainIsValid (stepGoals g1 l))
     where
       chainIsValid : List (RTerm ⊥) → Bool
       chainIsValid [] = false

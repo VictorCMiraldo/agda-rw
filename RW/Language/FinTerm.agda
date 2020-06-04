@@ -1,8 +1,7 @@
 open import Prelude renaming (_++_ to _++-List_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; zero; _+_; _≤_; z≤n; s≤s; _≤?_) renaming (decTotalOrder to decTotalOrder-ℕ)
 open import Data.Nat.Properties as ℕ-Props
-open import Data.Nat.Properties.Simple using (+-suc; +-comm)
+open import Data.Nat.Properties using (+-suc; +-comm)
 open import Data.Fin using (Fin; toℕ; fromℕ≤) renaming (inject+ to finject; raise to fraise; zero to fzero; suc to fsuc)
 open import Relation.Binary.PropositionalEquality as P using (_≡_; refl; cong; sym)
 open import Algebra using (module CommutativeSemiring; module DistributiveLattice)
@@ -79,9 +78,9 @@ module RW.Language.FinTerm where
     RaiseRTerms : Raise (List ∘ FinTerm)
     RaiseRTerms = rai (λ n → map (raise n))
 
-  open DistributiveLattice ℕ-Props.distributiveLattice 
+  open DistributiveLattice ⊓-⊔-distributiveLattice 
     using (_∧_; ∧-comm) public
-  open DecTotalOrder decTotalOrder-ℕ 
+  open DecTotalOrder ≤-decTotalOrder
     using (total) public
 
   private
@@ -124,7 +123,7 @@ module RW.Language.FinTerm where
     where
       fix-ovars : ℕ → FinTerm ar
       fix-ovars fn with suc fn ≤? ar
-      ...| yes prf = ovar (fromℕ≤ prf)
+      ...| yes prf = ovar (fromℕ< prf)
       ...| no  _   = ivar fn
 
   Fin2RTerm⊥ : FinTerm zero → RTerm ⊥
